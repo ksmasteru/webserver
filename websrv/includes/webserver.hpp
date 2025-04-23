@@ -22,13 +22,20 @@
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024
-#define SERVER_PORT 8080
 
 struct client
 {
     int start;
     time_t timestamp;
 };
+
+typedef struct InetData{
+    struct sockaddr_in server_fd, client_addr;
+    socklen_t client_len;
+    struct epoll_event event, events[MAX_EVENTS];
+    std::map<int, struct client> activity;
+}t_InetData;
+
 struct resp_h{
     unsigned int clength; // content length
     bool keepAlive;

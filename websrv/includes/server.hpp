@@ -14,6 +14,7 @@ class Server{
         Server(Server& rhs);
         Server& operator=(Server& rhs);
         bool loadedStatusCodes;
+        t_InetData data;
     public:
         Server();
         ~Server();

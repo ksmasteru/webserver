@@ -99,6 +99,7 @@ void handle_http_request(int client_fd, std::map<int, struct client> *activity)
     
 }
 
+// done
 int etablish_server(struct sockaddr_in *server_addr)
 {
     int server_fd;
@@ -136,7 +137,6 @@ int etablish_server(struct sockaddr_in *server_addr)
 
 int main()
 {
-
     struct sockaddr_in server_addr, client_addr;
     socklen_t client_len = sizeof(client_addr);
     int server_fd = etablish_server(&server_addr);
@@ -159,7 +159,7 @@ int main()
     }
     std::map<int, struct client> activity;
     std::thread timeout_thread(manage_timeout, std::ref(activity)); /* ?? */
-    timeout_thread.detach(); 
+    timeout_thread.detach();
     while (true)
     {
         int num_events = epoll_wait(epoll_fd, events, MAX_EVENTS, -1);
