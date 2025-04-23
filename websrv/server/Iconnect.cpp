@@ -11,7 +11,8 @@ void set_nonblocking(int sockfd)
     int flags = fcntl(sockfd, F_GETFL, 0);
     fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
 }
-//  create epoll object, adds socket fd to it
+
+// create epoll object, adds socket fd to it
 // returns epoll fd.
 int createEpoll(struct epoll_event* event, int socketfd)
 {
@@ -66,3 +67,22 @@ int makePassiveSocket(struct sockaddr_in *server_addr)
     return server_fd;
 }
 
+void manage_timeout(std::map<int , struct client> &activity){
+    
+    while (1)
+    { 
+        /* confusing if else statement ---> changed original code.*/
+        for (auto it = activity.begin(); it != activity.end();)
+        {
+            if (it->second.start)
+            {
+                if (time(NULL) - it->second.timestamp > 5) { 
+                    close(it->first);
+                    it = activity.erase(it);}
+            else
+                ++it;
+            }
+        }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}

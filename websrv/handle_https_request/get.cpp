@@ -111,20 +111,20 @@ void handle_get(int client_fd, std::map<int, struct client> *activity , std::map
                                    html_content;
             write(client_fd, response.c_str(), response.length());
             close(client_fd);
-        }
-        else if (access(path.c_str(), R_OK) == -1)
-        {
-            response_buffer << file2.rdbuf();
-            std::string html_content = response_buffer.str();
-            std::string response = "HTTP/1.1 403 Forbidden  \r\n"
+    }
+    else if (access(path.c_str(), R_OK) == -1)
+    {
+        response_buffer << file2.rdbuf();
+        std::string html_content = response_buffer.str();
+        std::string response = "HTTP/1.1 403 Forbidden  \r\n"
                                    "Content-Type: text/html\r\n"
                                    "Connection: close\r\n"
                                    "\r\n" +
                                    html_content;
             write(client_fd, response.c_str(), response.length());
             close(client_fd);
-        }
-        else // response. 
+    }
+        else // response. :: only here is handled in ::getResponse. f
         {
             std::ifstream file1;
             std::string extension = "";

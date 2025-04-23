@@ -6,15 +6,14 @@ class  AResponse{
     protected:
         const Request& _request;
         std::string _type;
-        struct resp_h res;
+        struct resp_h res_data;
+        const char* resp_msg;
     public:
         AResponse(std::string type, Request& req) :_type(type), _request(req){
-            this->res = fillRes_h();
         }
         virtual ~AResponse() = 0;
-        struct resp_h fillRes_h();
-        std::string generateHeader();
-        std::string generateBody();
-        std::string generateResponse();
-        std::string getTime();
+        virtual std::string generateHeader() = 0;
+        virtual std::string generateBody() = 0;
+        virtual void makeResponse() = 0;
+        virtual const char* getRes() const = 0;
 };

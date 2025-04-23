@@ -34,6 +34,8 @@ typedef struct InetData{
     socklen_t client_len;
     struct epoll_event event, events[MAX_EVENTS];
     std::map<int, struct client> activity;
+    int epollfd, clientfd;
+    int sfd;
 }t_InetData;
 
 struct resp_h{

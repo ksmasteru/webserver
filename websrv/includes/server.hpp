@@ -18,9 +18,15 @@ class Server{
     public:
         Server();
         ~Server();
-        int loadstatuscodes(const char* filepath);
+        void loadstatuscodes(const char* filepath);
         int establishServer();
+        int run();
+        void handleRequest();
+        Request& generateRequest();
         char *getRequest(int client_fd);
-        std::map<int, std::string> parseRequest(const char *request);
-        AResponse* generateResponse(Request&);
+        void sendResponse(const AResponse* res);
+        std::map<int, std::string> parseRequest(const std::string& request);
+        AResponse* generateResponse(const Request&);
 };
+
+// handle request : getRequest --> getResponse --> sendRespond

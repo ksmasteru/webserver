@@ -14,5 +14,9 @@ class  Request{
         Request(std::map<int, std::string>& p_map,
             std::string&RequestBuffer) : parse_map(p_map),
                  RawRequest(RequestBuffer){}
-        ~Request();
+        const std::map<int, std::string>& getMap();
+        const std::string& getRawRequest();
+        const std::string& getType();
+        std::string& getMapAtIndex(unsigned int index) const;
+        ~Request(){}
 };
