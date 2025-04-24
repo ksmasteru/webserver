@@ -1,8 +1,11 @@
 #include "../includes/GetResponse.hpp"
 
-GetResponse::GetResponse(std::string type, Request& req) : AResponse(type, req)
+GetResponse::GetResponse(const std::string& type, Request* req) : AResponse(type, req)
 {
     // first checks if the file exist based on this info : fill body header
+    // shalow copy of request.
+    std::cout << "Getresponse constructor called " << std::endl;
+    std::cout << "type is " << type << " request ptr ist " << req << std::endl;
 }
 
 // response header should be last to get filled.
@@ -62,13 +65,16 @@ std::string GetResponse::generateHeader()
 
 std::string GetResponse::pageBodyError(unsigned int code)
 {
+    std::cout << "page Body error called" << std::endl;
     std::ifstream file;
     if (code == 403)
-        file.open("./reponse/403.html");
-    else if (code = 403)
-        file.open("./response/403.html"); // TODO load error page
+        file.open("403.html");
+    else if (code == 403)
+        file.open("403.html"); // TODO load error page
+    else
+        file.open("403.html");
     if (!file)
-        throw ("opa file 43:getrepsonse");
+        throw ("opa file 76:getrepsonse");
     std::string resp_buff;
     std::stringstream response_buffer(resp_buff);
     response_buffer << file.rdbuf();
@@ -77,16 +83,17 @@ std::string GetResponse::pageBodyError(unsigned int code)
     this->res_data.extension = "text/html"; // TODO
     this->res_data.keepAlive =  "close";
     this->res_data.status = code;
+    return (bodyError);
 }
 
 std::string GetResponse::requestPageBody(const char* path)
 {
     // TODO load actual request page
     std::ifstream ifs;
-    ifs.open("./response/404.html");
+    ifs.open("/home/hes-saqu/Desktop/apache/reponse/403.html");
     if (!ifs)
         throw ("requestPageBody couldnt open request file");
-    std::string resp_buff;
+        std::string resp_buff;
     std::stringstream  response_buffer(resp_buff);
     response_buffer << ifs.rdbuf();
     std::string responseBody = response_buffer.str();
@@ -103,26 +110,47 @@ std::string GetResponse::generateBody(const char* path)
 {
     unsigned int responseCode = 200;
     std::ifstream file;
+    /*std::cout << "path is " << path << std::endl;
     if (access(path, F_OK) == -1)
         return (pageBodyError(403));
     else if (access(path, R_OK) == -1)
         return (pageBodyError(404));
-    else
+    else*/
         return (requestPageBody(path));
 }
+
 
 void GetResponse::makeResponse()
 {
     // type of response is based on the file asked.
-    std::string path = "./static_files" + this->_request.getMapAtIndex(0);
+    // cannot use [0] because request is marked at const and [] can increase
+    // the size of the map container.\ 
+    std::cout << "makeResponse called" << std::endl;
+    std::string path = "./static_files" + _request->getMapAtIndex(0);
     std::string responseBody = generateBody(path.c_str());
     // resp_h is already filled by generate body .
     std::string responseHeader = generateHeader();
     std::string response = (responseHeader + "\n" + responseBody).c_str();
-    this->resp_msg = response.c_str();
+    //std::cout << "makeResponse done" << response <<std::endl;
+    this->resp_msg = response.c_str(); // BIG MISTAKE
+    size_t len = response.length();
+    std::cout << "len is" << len << std::endl;
+    char *resp = new char[len];
+    resp[len - 1] = '\0';
+    std::strncpy(resp, this->resp_msg, len - 1); // you get away with this. 
+    this->resp_msg = resp;
 }
 
 const char* GetResponse::getRes() const
 {
     return (this->resp_msg);
+}
+
+bool GetResponse::isAlive() const
+{
+    return true;
+}
+GetResponse::~GetResponse()
+{
+    std::cout << "KA BOOM" << std::endl;
 }

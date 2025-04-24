@@ -22,12 +22,7 @@
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024
-
-struct client
-{
-    int start;
-    time_t timestamp;
-};
+#include <string>
 
 typedef struct InetData{
     struct sockaddr_in server_fd, client_addr;
@@ -40,13 +35,9 @@ typedef struct InetData{
 
 struct resp_h{
     unsigned int clength; // content length
-    bool keepAlive;
+    const char* keepAlive;
     unsigned int status;
     std::string extension;
 };
 
-void handle_get(int , std::map<int, client>*, std::map<int, std::string>)
-{
-    
-}
 #endif 

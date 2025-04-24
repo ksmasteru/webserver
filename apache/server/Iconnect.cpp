@@ -5,7 +5,6 @@
 #include "../includes/Iconnect.hpp"
 #include <iostream>
 #include <cstring>
- 
 void set_nonblocking(int sockfd)
 {
     int flags = fcntl(sockfd, F_GETFL, 0);
@@ -16,7 +15,7 @@ void set_nonblocking(int sockfd)
 // returns epoll fd.
 int createEpoll(struct epoll_event* event, int socketfd)
 {
-    int epoll_fd = epoll_create(0);
+    int epoll_fd = epoll_create1(0);
     if (epoll_fd == -1)
     {
         std::cerr << "Error creating epoll instance" << std::endl;

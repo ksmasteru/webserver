@@ -17,16 +17,17 @@ class Server{
         t_InetData data;
     public:
         Server();
-        ~Server();
+        ~Server(){
+        }
         void loadstatuscodes(const char* filepath);
         int establishServer();
         int run();
-        void handleRequest();
-        Request& generateRequest();
+        void handleRequest(int efd);
+        Request* generateRequest(int efd);
         char *getRequest(int client_fd);
-        void sendResponse(const AResponse* res);
-        std::map<int, std::string> parseRequest(const std::string& request);
-        AResponse* generateResponse(const Request&);
+        void sendResponse(AResponse* res);
+        void parseRequest(const std::string& request, std::map<int, std::string>& map);
+        AResponse* generateResponse(Request*);
 };
 
 // handle request : getRequest --> getResponse --> sendRespond

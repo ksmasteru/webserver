@@ -1,11 +1,10 @@
 #include "../includes/webserver.hpp"
 #include "../includes/server.hpp"
 #include "../includes/Iconnect.hpp"
-#define STATUS_PATH "../utils/codes.txt"
-#include "AResponse.hpp"
-#include "GetResponse.hpp"
-#include "DelResponse.hpp"
-#include "PostResponse.hpp"
+#define STATUS_PATH "codes.txt"
+#include "../includes/AResponse.hpp"
+#include "../includes/GetResponse.hpp"
+#include <fstream>
 
 Server::Server()
 {
@@ -33,15 +32,17 @@ int Server::establishServer()
     catch (const char* error)
     {
         throw (error);
+        exit (1);
     }
     this->loadedStatusCodes = true;
+    return (0);
 }
 
 int Server::run()
 {
     std::map<int, struct client> activity;
-    std::thread timeout_thread(manage_timeout, std::ref(activity)); /* ?? */
-    timeout_thread.detach();
+   // std::thread timeout_thread(manage_timeout, std::ref(activity)); /* ?? */
+    //timeout_thread.detach();
     while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
@@ -78,7 +79,7 @@ int Server::run()
             else
             {
                 //handle_http_request(data.events[i].data.fd, &activity);
-                handleRequest();
+                handleRequest(data.events[i].data.fd);
             }
         }
     }
@@ -89,10 +90,11 @@ int Server::run()
 
 void Server::loadstatuscodes(const char* filepath)
 {
-    std::ifstream ifs(filepath);
+    std::ifstream ifs;
+    ifs.open("codes.txt");
     if (!ifs)
     {
-        std::cerr << "couln't load status codes file " << std::endl; 
+        std::cerr << "couln't load status codes file " << filepath<< std::endl; 
         return ;
     }
     std::string line;
@@ -106,23 +108,53 @@ void Server::loadstatuscodes(const char* filepath)
     }
 }
 
-Request& Server::generateRequest()
+void Server::parseRequest(const std::string& request, std::map<int , std::string>& map)
+{
+    int start = 5;
+    int index = 0;
+    size_t end ;
+    std::string str;
+    std::string reqcopy = request;
+    while ((end = reqcopy.find('\n')) != std::string::npos)
+    {
+        if (!index)
+        {
+            str = reqcopy.substr(4, end - 14);
+            map[index] = str;
+            index++;
+        }
+        else
+        {
+            start = reqcopy.find(' ');
+            map[index++] = reqcopy.substr(start + 1, (end - start) - 2);
+        }
+        reqcopy = reqcopy.substr(end + 1);
+    }
+}
+
+Request* Server::generateRequest(int efd)
 {
     struct client cl = data.activity[data.clientfd]; // :?
     char buffer[BUFFER_SIZE];
-    ssize_t bytes_read = read(data.clientfd, buffer, BUFFER_SIZE - 1);
+    std::cout << "data client fd : " << data.clientfd << std::endl;
+    ssize_t bytes_read = read(efd, buffer, BUFFER_SIZE - 1);
+    //std::cout << "bytes read : " << bytes_read <<  "buffer : " << buffer << std::endl;
     if (bytes_read <= 0)
     {
         close(data.clientfd);
-        return;
+        throw ("read :: generateRequest");
     }
     buffer[bytes_read] = '\0';
     //std::ofstream ofs("get.txt");
     //ofs << buffer;
-    std::map<int, std::string> map = parseRequest(buffer);
-    std::string requestBuffer(buffer);
-    Request req(map, requestBuffer);
-    return req;
+    //std::map<int, std::string> map;
+    //std::string buf = buffer;
+    //parseRequest(buf, map);
+    //Request req(map, buf);
+    // which class should allocate map and buffer?
+    Request *req1 = new Request(buffer);
+    
+    return req1; // mablansh t returni this/
     /*
     if (requestBuffer.find("GET") != std::string::npos)
         return ();
@@ -133,10 +165,6 @@ Request& Server::generateRequest()
     }*/
 }
 
-char* Server::getRequest(int client_fd)
-{
-
-}
 
 std::map<int, std::string> parseRequest(const std::string& request)
 {
@@ -165,36 +193,57 @@ std::map<int, std::string> parseRequest(const std::string& request)
     return map;
 }
 
-AResponse* Server::generateResponse(Request& req)
+AResponse* Server::generateResponse(Request* req)
 {
-    if (req.getType() == "GET")
+    if (req->getType() == "GET")
         return (new GetResponse("GET", req));
-    else if (req.getType() == "POST")
+    /*else if (req.getType() == "POST")
         return (new PostResponse("POST", req));
     else if (req.getType() == "DELETE")
-        return (new DelResponse("DELETE", req));
-    else
-        return (new BadRequest(req)); // TODO
+        return (new DelResponse("DELETE", req));*/
+    //else
+      //  return (new BadRequest(req)); // TODO
+    std::cout << "bad request" << std::endl;
+    return (nullptr);
 }
 
-void Server::sendResponse(const AResponse* res)
+void Server::sendResponse(AResponse* resp)
 {
-
-}
-
-void Server::sendResponse(const AResponse* resp)
-{
+    std::cout << "send reponse called" << std::endl;
     // TODO chubked response isnt handled yet;
-
-    send(this->data.clientfd, resp->getRes(), strlen(resp->getRes()), 0);
+    if (send(this->data.clientfd, resp->getRes(), strlen(resp->getRes()), 0) == -1)
+        std::cout << "send error" << std::endl;
 }
 
-void Server::handleRequest()
+void Server::handleRequest(int efd)
 {
-    Request& req = generateRequest();
-    // handle request failure ?
+    Request* req;
+    try {
+        req = generateRequest(efd);
+    }
+    catch (const char* error)
+    {
+        std::cout << error << std::endl;
+        return ;
+    }
+    std::cout << "request generated" <<  std::endl;
     AResponse* resp = generateResponse(req);
-    sendResponse(resp);
+    try {
+        resp->makeResponse();}
+    catch (const char* error)
+    {
+        std::cout << error << std::endl;
+        exit (1); 
+    }
+    catch (std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+    }
+    //std::cout << "response generated" << std::endl;
+    if (send(this->data.clientfd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
+        std::cout << "send error" << std::endl;
+    std::cout << "response sent" << std::endl;
+    close(efd);
     delete resp;
 }
 
@@ -209,4 +258,5 @@ int main()
         std::cout << "error : " << error_msg << std::endl;
     }
     apache.run();
+    // signal handling ?
 }
