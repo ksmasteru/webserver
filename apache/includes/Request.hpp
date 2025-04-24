@@ -4,6 +4,7 @@
 #pragma once
 class  Request{
     private:
+    std::string requestPath;
     std::string RawRequest;
     std::string type;
     Request(Request& rhs);
@@ -12,6 +13,7 @@ class  Request{
     
     public:
     Request(char *buffer);
+    const char* getRequestPath();
     const std::string& getRawRequest() const;
     const std::string& getType() const;
     void parseRequest(char* request);

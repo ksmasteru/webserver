@@ -4,6 +4,7 @@
 
 class GetResponse : public AResponse
 {
+    
     public:
         GetResponse(const std::string& type, Request *req);
         virtual ~GetResponse();

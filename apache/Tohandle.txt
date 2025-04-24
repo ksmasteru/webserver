@@ -1,0 +1,7 @@
+REQUEST PATH ?: how to extract it.
+
+how to provide a path with loopbackadress
+
+KEEP ALIVE.
+
+OTHER REQUEST.

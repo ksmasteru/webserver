@@ -12,6 +12,7 @@ Request::Request(char* buffer)
         this->type = "GET";
     else
         this->type = "random";
+    this->requestPath = this->getMapAtIndex(0);
 }
 
 /*const std::map<int, std::string>&   Request::getMap() const{
@@ -53,4 +54,9 @@ void Request::parseRequest(char* request)
 std::string Request::getMapAtIndex(unsigned int index)
 {
     return (parse_map[index]);
+}
+
+const char* Request::getRequestPath()
+{
+    return (this->requestPath.c_str());
 }

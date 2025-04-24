@@ -6,6 +6,8 @@ GetResponse::GetResponse(const std::string& type, Request* req) : AResponse(type
     // shalow copy of request.
     std::cout << "Getresponse constructor called " << std::endl;
     std::cout << "type is " << type << " request ptr ist " << req << std::endl;
+    const char* path = _request->getRequestPath();
+    std::cout << "path is " << path << std::endl;
 }
 
 // response header should be last to get filled.
@@ -90,10 +92,10 @@ std::string GetResponse::requestPageBody(const char* path)
 {
     // TODO load actual request page
     std::ifstream ifs;
-    ifs.open("/home/hes-saqu/Desktop/apache/reponse/403.html");
+    ifs.open("/home/hes-saqu/Desktop/webserver/apache/reponse/403.html");
     if (!ifs)
         throw ("requestPageBody couldnt open request file");
-        std::string resp_buff;
+    std::string resp_buff;
     std::stringstream  response_buffer(resp_buff);
     response_buffer << ifs.rdbuf();
     std::string responseBody = response_buffer.str();
@@ -150,7 +152,10 @@ bool GetResponse::isAlive() const
 {
     return true;
 }
+
 GetResponse::~GetResponse()
 {
     std::cout << "KA BOOM" << std::endl;
 }
+
+// has to be used on pla
