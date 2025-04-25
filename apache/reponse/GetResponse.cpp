@@ -1,25 +1,25 @@
 #include "../includes/GetResponse.hpp"
 
-GetResponse::GetResponse(const std::string& type, Request* req) : AResponse(type, req)
+GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
+std::string>*status) : AResponse(type, req, status)
 {
     // first checks if the file exist based on this info : fill body header
     // shalow copy of request.
-    std::cout << "Getresponse constructor called " << std::endl;
-    std::cout << "type is " << type << " request ptr ist " << req << std::endl;
-    const char* path = _request->getRequestPath();
-    std::cout << "path is " << path << std::endl;
 }
 
 // response header should be last to get filled.
 
-std::string RspStatusline(unsigned int code)
+std::string GetResponse::RspStatusline(unsigned int code)
 {
     // HTTP/{VERSION(DOUBLE)} {STATUS CODE} RESPONSE
     // HTTP/1.1 200 OK
     // map response to code.
     std::string http_version = "HTTP/1.1";
     std::string statusCode = intToString(code);
-    std::string Response = "OK"; // reponse message.
+    std::string Response = "unknown error code";
+    std::map<std::string, std::string>::iterator it;
+    if ((it = statuscodes->find(statusCode)) != statuscodes->end())
+        Response = it->second;
     std::string rsp = http_version + " " + statusCode + " " + Response + "\r\n";
     return (rsp);
 }
@@ -91,8 +91,26 @@ std::string GetResponse::pageBodyError(unsigned int code)
 std::string GetResponse::requestPageBody(const char* path)
 {
     // TODO load actual request page
+    // '/pages should be appended to path
+    std::cout << "full path is: " << path << std::endl;
     std::ifstream ifs;
-    ifs.open("/home/hes-saqu/Desktop/webserver/apache/reponse/403.html");
+    this->res_data.status = 200; // TODO
+    // index path
+    if (strncmp(path,"pages/", sizeof("pages/")) == 0)
+    {
+        std::cout << "index path" << std::endl;
+        ifs.open("pages/index.html");
+    }
+    else if (access(path, F_OK) == -1)
+    {
+        this->res_data.status = 404;
+        ifs.open("pages/404.html");
+    }
+    else if (access(path, R_OK) == -1)
+    {
+        this->res_data.status = 403;
+        ifs.open("pages/403.html");
+    }
     if (!ifs)
         throw ("requestPageBody couldnt open request file");
     std::string resp_buff;
@@ -102,7 +120,6 @@ std::string GetResponse::requestPageBody(const char* path)
     this->res_data.clength = responseBody.length(); 
     this->res_data.extension = "text/html"; // TODO
     this->res_data.keepAlive =  "close"; //TODO
-    this->res_data.status = 200; // TODO
    // if (map.find(6) != map.end() && map[6].find("keep-alive") != std::string::npos)
         //this->res_data.keepAlive = "keep-alive";
     return responseBody;
@@ -110,7 +127,6 @@ std::string GetResponse::requestPageBody(const char* path)
 
 std::string GetResponse::generateBody(const char* path)
 {
-    unsigned int responseCode = 200;
     std::ifstream file;
     /*std::cout << "path is " << path << std::endl;
     if (access(path, F_OK) == -1)
@@ -118,9 +134,8 @@ std::string GetResponse::generateBody(const char* path)
     else if (access(path, R_OK) == -1)
         return (pageBodyError(404));
     else*/
-        return (requestPageBody(path));
+    return (requestPageBody(path));
 }
-
 
 void GetResponse::makeResponse()
 {
@@ -128,7 +143,7 @@ void GetResponse::makeResponse()
     // cannot use [0] because request is marked at const and [] can increase
     // the size of the map container.\ 
     std::cout << "makeResponse called" << std::endl;
-    std::string path = "./static_files" + _request->getMapAtIndex(0);
+    std::string path = "pages" + _request->getMapAtIndex(0);
     std::string responseBody = generateBody(path.c_str());
     // resp_h is already filled by generate body .
     std::string responseHeader = generateHeader();

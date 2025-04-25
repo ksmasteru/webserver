@@ -1,7 +1,7 @@
 #include "../includes/webserver.hpp"
 #include "../includes/server.hpp"
 #include "../includes/Iconnect.hpp"
-#define STATUS_PATH "codes.txt"
+#define STATUS_PATH "/home/hes-saqu/Desktop/webserver/apache/server/codes.txt"
 #include "../includes/AResponse.hpp"
 #include "../includes/GetResponse.hpp"
 #include <fstream>
@@ -91,7 +91,7 @@ int Server::run()
 void Server::loadstatuscodes(const char* filepath)
 {
     std::ifstream ifs;
-    ifs.open("codes.txt");
+    ifs.open(filepath);
     if (!ifs)
     {
         std::cerr << "couln't load status codes file " << filepath<< std::endl; 
@@ -165,7 +165,6 @@ Request* Server::generateRequest(int efd)
     }*/
 }
 
-
 std::map<int, std::string> parseRequest(const std::string& request)
 {
     int start = 5;
@@ -196,7 +195,7 @@ std::map<int, std::string> parseRequest(const std::string& request)
 AResponse* Server::generateResponse(Request* req)
 {
     if (req->getType() == "GET")
-        return (new GetResponse("GET", req));
+        return (new GetResponse("GET", req, &statusCodes));
     /*else if (req.getType() == "POST")
         return (new PostResponse("POST", req));
     else if (req.getType() == "DELETE")
@@ -242,7 +241,6 @@ void Server::handleRequest(int efd)
     //std::cout << "response generated" << std::endl;
     if (send(this->data.clientfd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
         std::cout << "send error" << std::endl;
-    std::cout << "response sent" << std::endl;
     close(efd);
     delete resp;
 }
