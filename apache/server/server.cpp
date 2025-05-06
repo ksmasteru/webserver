@@ -40,20 +40,24 @@ int Server::establishServer()
 
 int Server::run()
 {
-    std::map<int, struct client> activity;
-    //std::thread timeout_thread(manage_timeout, std::ref(activity)); /* ?? */
-    //timeout_thread.detach();
+    // close connection after 5 second if no activity detected.
+    std::thread timeout_thread(manage_timeout, std::ref(activity));
+    timeout_thread.detach();
     int cfd = accept(data.sfd, NULL, NULL);
     if (cfd == -1)
     {
         printf ("couldnt connect\n");
         exit (1);
     }
+    struct client cl = {0, time(NULL)};
+    activity[cfd] = cl;
+    std::cout << "new Connection giving 5 second to close " << std::endl; 
     //int readbytes;<
     //char buffer[1000];
     //readbytes = read(cfd, buffer, 1000);
     //buffer[readbytes] = '\0';
-    handleRequest(cfd);
+    while (1)
+        handleRequest(cfd);
     /*while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
@@ -94,8 +98,8 @@ int Server::run()
             }
         }
     }*/
-    close(data.sfd);
-    close(data.epollfd);
+    //close(data.sfd);
+    //close(data.epollfd);
     return 0;
 }
 
@@ -227,6 +231,8 @@ void Server::sendResponse(AResponse* resp)
 
 void Server::handleRequest(int efd)
 {
+    // create thread here.
+    // need epoll. 
     Request* req;
     try {
         req = generateRequest(efd);
@@ -254,7 +260,14 @@ void Server::handleRequest(int efd)
     //exit(1);
     if (send(efd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
         std::cout << "send error" << std::endl;
-    //close(efd);
+    // reset timeout.
+    if (req->isAlive())
+    {
+        std::cout << "reset client timeout" << std::endl; 
+        activity[efd] = {1, NULL};
+    }
+    else
+        close(efd);
     delete resp;
 }
 
@@ -269,5 +282,4 @@ int main()
         std::cout << "error : " << error_msg << std::endl;
     }
     apache.run();
-    // signal handling ?
 }

@@ -1,0 +1,6 @@
+keep alive && chuncked. requires epoll ?
+what is the role of keep alive : if the client may want other ressources
+he sends it in the header.
+
+// test keep 
+// send image : will require chunked, keep alive.

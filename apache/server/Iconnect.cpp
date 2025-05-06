@@ -67,21 +67,18 @@ int makePassiveSocket(struct sockaddr_in *server_addr)
 }
 
 void manage_timeout(std::map<int , struct client> &activity){
-    
     while (1)
-    { 
-        /* confusing if else statement ---> changed original code.*/
-        for (auto it = activity.begin(); it != activity.end();)
-        {
-            if (it->second.start)
-            {
-                if (time(NULL) - it->second.timestamp > 5) { 
-                    close(it->first);
-                    it = activity.erase(it);}
-            else
-                ++it;
-            }
+    { for (auto it = activity.begin(); it != activity.end();) {
+                if (it->second.start)
+        if (time(NULL) - it->second.timestamp > 5) {
+            std::cout << "closing connection from timout_thread" << std::endl; 
+            close(it->first);
+            it = activity.erase(it);
+        } else {
+            ++it;
         }
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
 }
