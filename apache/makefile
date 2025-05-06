@@ -13,10 +13,10 @@ OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) -g3 -fsanitize=address $(OBJS) -o $(NAME)
+	$(CC) -g3 -std=c++11 -fsanitize=address $(OBJS) -o $(NAME)
 
 %.o: %.cpp $(HEADERS)
-	$(CC) -c -g3 -fsanitize=address $< -o $@
+	$(CC) -c -g3 -std=c++11 -fsanitize=address $< -o $@
 
 clean:
 	rm -f $(OBJS)

@@ -1,6 +1,0 @@
-REQUEST PATH : CHECK IF THE PATH provided exist in our directory
-    and return a response accordingly.
-
-KEEP ALIVE.
-
-OTHER REQUEST.

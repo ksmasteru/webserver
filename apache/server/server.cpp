@@ -22,11 +22,11 @@ int Server::establishServer()
     if (data.sfd == -1)
         throw ("");
     //struct epoll_event event, events[MAX_EVENTS];
-    data.epollfd = createEpoll(&data.event, data.sfd);
-    if (data.epollfd == -1)
-        throw ("epoll");
+    //data.epollfd = createEpoll(&data.event, data.sfd);
+    //if (data.epollfd == -1)
+        //throw ("epoll");
     // load status codes.
-    try {
+    /*try {
         loadstatuscodes(STATUS_PATH);
     }
     catch (const char* error)
@@ -35,20 +35,31 @@ int Server::establishServer()
         exit (1);
     }
     this->loadedStatusCodes = true;
-    return (0);
+    */return (0);
 }
 
 int Server::run()
 {
     std::map<int, struct client> activity;
-   // std::thread timeout_thread(manage_timeout, std::ref(activity)); /* ?? */
+    //std::thread timeout_thread(manage_timeout, std::ref(activity)); /* ?? */
     //timeout_thread.detach();
-    while (true)
+    int cfd = accept(data.sfd, NULL, NULL);
+    if (cfd == -1)
+    {
+        printf ("couldnt connect\n");
+        exit (1);
+    }
+    //int readbytes;<
+    //char buffer[1000];
+    //readbytes = read(cfd, buffer, 1000);
+    //buffer[readbytes] = '\0';
+    handleRequest(cfd);
+    /*while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
         {
-            std::cerr << "Error in epoll_wait" << std::endl;
+            std::cerr << "Error in epoll_wait" < std::endl;
             return EXIT_FAILURE;
         }
 
@@ -82,7 +93,7 @@ int Server::run()
                 handleRequest(data.events[i].data.fd);
             }
         }
-    }
+    }*/
     close(data.sfd);
     close(data.epollfd);
     return 0;
@@ -134,9 +145,9 @@ void Server::parseRequest(const std::string& request, std::map<int , std::string
 
 Request* Server::generateRequest(int efd)
 {
-    struct client cl = data.activity[data.clientfd]; // :?
+    //struct client cl = data.activity[data.clientfd]; // :?
     char buffer[BUFFER_SIZE];
-    std::cout << "data client fd : " << data.clientfd << std::endl;
+    //std::cout << "data client fd : " << data.clientfd << std::endl;
     ssize_t bytes_read = read(efd, buffer, BUFFER_SIZE - 1);
     //std::cout << "bytes read : " << bytes_read <<  "buffer : " << buffer << std::endl;
     if (bytes_read <= 0)
@@ -152,7 +163,7 @@ Request* Server::generateRequest(int efd)
     //parseRequest(buf, map);
     //Request req(map, buf);
     // which class should allocate map and buffer?
-    Request *req1 = new Request(buffer);
+    Request *req1 = new Request(buffer, bytes_read);
     
     return req1; // mablansh t returni this/
     /*
@@ -225,10 +236,10 @@ void Server::handleRequest(int efd)
         std::cout << error << std::endl;
         return ;
     }
-    std::cout << "request generated" <<  std::endl;
     AResponse* resp = generateResponse(req);
     try {
-        resp->makeResponse();}
+            resp->makeResponse();
+        }
     catch (const char* error)
     {
         std::cout << error << std::endl;
@@ -238,10 +249,12 @@ void Server::handleRequest(int efd)
     {
         std::cout << e.what() << std::endl;
     }
-    //std::cout << "response generated" << std::endl;
-    if (send(this->data.clientfd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
+    // format of response issue.
+    //std::cout << "response\n" << resp->getRes() << std::endl;
+    //exit(1);
+    if (send(efd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
         std::cout << "send error" << std::endl;
-    close(efd);
+    //close(efd);
     delete resp;
 }
 

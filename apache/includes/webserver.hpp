@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/epoll.h>
+//#include <sys/epoll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <string>
@@ -27,7 +27,7 @@ typedef std::map<std::string, std::string> dstring_map;
 typedef struct InetData{
     struct sockaddr_in server_fd, client_addr;
     socklen_t client_len;
-    struct epoll_event event, events[MAX_EVENTS];
+    //struct epoll_event event, events[MAX_EVENTS];
     std::map<int, struct client> activity;
     int epollfd, clientfd;
     int sfd;
@@ -37,7 +37,7 @@ struct resp_h{
     unsigned int clength; // content length
     const char* keepAlive;
     unsigned int status;
-    std::string extension;
+    std::string contentType;
 };
 
 #endif 

@@ -13,7 +13,7 @@ void set_nonblocking(int sockfd)
 
 // create epoll object, adds socket fd to it
 // returns epoll fd.
-int createEpoll(struct epoll_event* event, int socketfd)
+/*int createEpoll(struct epoll_event* event, int socketfd)
 {
     int epoll_fd = epoll_create1(0);
     if (epoll_fd == -1)
@@ -29,7 +29,7 @@ int createEpoll(struct epoll_event* event, int socketfd)
         return -1;
     }
     return epoll_fd;
-}
+}*/
 
 int makePassiveSocket(struct sockaddr_in *server_addr)
 {
@@ -62,7 +62,7 @@ int makePassiveSocket(struct sockaddr_in *server_addr)
 
     std::cout << "Server listening on port " << SERVER_PORT << std::endl;
 
-    set_nonblocking(server_fd);
+    //set_nonblocking(server_fd);
     return server_fd;
 }
 
