@@ -70,9 +70,7 @@ int Server::run()
                     close(data.clientfd);
             }
             else
-            {
                 handleRequest(data.events[i].data.fd);
-            }
         }
     }
     close(data.sfd);
@@ -208,6 +206,7 @@ void Server::handleRequest(int efd)
     // format of response issue.
     //std::cout << "response\n" << resp->getRes() << std::endl;
     //exit(1);
+    std::cout << resp->getRes() << std::endl; 
     if (send(efd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
         std::cout << "send error" << std::endl;
     // reset timeout.
