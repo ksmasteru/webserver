@@ -27,7 +27,7 @@ typedef std::map<std::string, std::string> dstring_map;
 typedef struct InetData{
     struct sockaddr_in server_fd, client_addr;
     socklen_t client_len;
-    //struct epoll_event event, events[MAX_EVENTS];
+    struct epoll_event event, events[MAX_EVENTS];
     std::map<int, struct client> activity;
     int epollfd, clientfd;
     int sfd;

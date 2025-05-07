@@ -21,7 +21,6 @@ int Server::establishServer()
     data.sfd = makePassiveSocket(&data.server_fd);
     if (data.sfd == -1)
         throw ("");
-    struct epoll_event event, events[MAX_EVENTS];
     data.epollfd = createEpoll(&data.event, data.sfd);
     if (data.epollfd == -1)
         throw ("epoll");
