@@ -53,11 +53,7 @@ int Server::run()
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
-        {
-            std::cerr << "Error in epoll_wait" < std::endl;
             return EXIT_FAILURE;
-        }
-
         for (int i = 0; i < num_events; i++)
         {
             if (data.events[i].data.fd == data.sfd)
