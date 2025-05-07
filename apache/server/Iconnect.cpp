@@ -5,6 +5,7 @@
 #include "../includes/Iconnect.hpp"
 #include <iostream>
 #include <cstring>
+
 void set_nonblocking(int sockfd)
 {
     int flags = fcntl(sockfd, F_GETFL, 0);
@@ -13,7 +14,7 @@ void set_nonblocking(int sockfd)
 
 // create epoll object, adds socket fd to it
 // returns epoll fd.
-/*int createEpoll(struct epoll_event* event, int socketfd)
+int createEpoll(struct epoll_event* event, int socketfd)
 {
     int epoll_fd = epoll_create1(0);
     if (epoll_fd == -1)
@@ -29,7 +30,7 @@ void set_nonblocking(int sockfd)
         return -1;
     }
     return epoll_fd;
-}*/
+}
 
 int makePassiveSocket(struct sockaddr_in *server_addr)
 {
@@ -62,7 +63,7 @@ int makePassiveSocket(struct sockaddr_in *server_addr)
 
     std::cout << "Server listening on port " << SERVER_PORT << std::endl;
 
-    //set_nonblocking(server_fd);
+    set_nonblocking(server_fd);
     return server_fd;
 }
 
@@ -71,6 +72,7 @@ void manage_timeout(std::map<int , struct client> &activity){
     { for (auto it = activity.begin(); it != activity.end();) {
                 if (it->second.start)
         if (time(NULL) - it->second.timestamp > 5) {
+            std::cout << it->second.timestamp << std::endl;
             std::cout << "closing connection from timout_thread" << std::endl; 
             close(it->first);
             it = activity.erase(it);

@@ -4,3 +4,5 @@ he sends it in the header.
 
 // test keep 
 // send image : will require chunked, keep alive.
+
+// --> need epoll. 100%.

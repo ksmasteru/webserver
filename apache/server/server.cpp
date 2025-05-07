@@ -21,11 +21,10 @@ int Server::establishServer()
     data.sfd = makePassiveSocket(&data.server_fd);
     if (data.sfd == -1)
         throw ("");
-    //struct epoll_event event, events[MAX_EVENTS];
-    //data.epollfd = createEpoll(&data.event, data.sfd);
-    //if (data.epollfd == -1)
-        //throw ("epoll");
-    // load status codes.
+    struct epoll_event event, events[MAX_EVENTS];
+    data.epollfd = createEpoll(&data.event, data.sfd);
+    if (data.epollfd == -1)
+        throw ("epoll");
     /*try {
         loadstatuscodes(STATUS_PATH);
     }
@@ -43,22 +42,17 @@ int Server::run()
     // close connection after 5 second if no activity detected.
     std::thread timeout_thread(manage_timeout, std::ref(activity));
     timeout_thread.detach();
-    int cfd = accept(data.sfd, NULL, NULL);
+    /*int cfd = accept(data.sfd, NULL, NULL);
     if (cfd == -1)
     {
-        printf ("couldnt connect\n");
-        exit (1);
-    }
-    struct client cl = {0, time(NULL)};
+        printf ("couldnt connect\n");        exit (1);
+    }*/
+    //struct client cl = {0, time(NULL)};
     activity[cfd] = cl;
     std::cout << "new Connection giving 5 second to close " << std::endl; 
-    //int readbytes;<
-    //char buffer[1000];
-    //readbytes = read(cfd, buffer, 1000);
-    //buffer[readbytes] = '\0';
-    while (1)
-        handleRequest(cfd);
-    /*while (true)
+    //handleRequest(cfd);
+    int client_fd;
+    while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
@@ -71,35 +65,25 @@ int Server::run()
         {
             if (data.events[i].data.fd == data.sfd)
             {
-                data.clientfd = accept(data.sfd, (struct sockaddr *)&data.client_addr, &data.client_len);
-                if (data.clientfd == -1)
-                {
+                client_fd = accept(data.sfd, (struct sockaddr *)&data.client_addr, &data.client_len);
+                if (client_fd == -1)
                     continue;
-                }
                 struct client cl = {0, time(NULL)};
-                activity[data.clientfd] = cl;
-
-                std::cout << "New connection from " << inet_ntoa(data.client_addr.sin_addr)
-                          << ":" << ntohs(data.client_addr.sin_port) << std::endl;
-
-                set_nonblocking(data.clientfd);
-
+                activity[client_fd] = cl;
+                set_nonblocking(client_fd);
                 data.event.events = EPOLLIN | EPOLLET;
-                data.event.data.fd = data.clientfd;
-                if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, data.clientfd, &data.event) == -1)
-                {
+                data.event.data.fd = client_fd;
+                if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &data.event) == -1)
                     close(data.clientfd);
-                }
             }
             else
             {
-                //handle_http_request(data.events[i].data.fd, &activity);
                 handleRequest(data.events[i].data.fd);
             }
         }
-    }*/
-    //close(data.sfd);
-    //close(data.epollfd);
+    }
+    close(data.sfd);
+    close(data.epollfd);
     return 0;
 }
 
@@ -180,33 +164,6 @@ Request* Server::generateRequest(int efd)
     }*/
 }
 
-std::map<int, std::string> parseRequest(const std::string& request)
-{
-    int start = 5;
-    int index = 0;
-    std::map<int, std::string> map;
-    size_t end ;
-    std::string str;
-    std::string reqCopy = request;
-    while ((end = reqCopy.find('\n')) != std::string::npos)
-    {
-        if (!index)
-        {
-            str = reqCopy.substr(4, end - 14);
-            map[index] = str;
-            index++;
-        }
-        else
-        {
-            start = reqCopy.find(' ');
-            map[index++] = reqCopy.substr(start + 1, (end - start) - 2);
-        }
-        reqCopy = reqCopy.substr(end + 1);
-    }
-    //print_map(map);
-    return map;
-}
-
 AResponse* Server::generateResponse(Request* req)
 {
     if (req->getType() == "GET")
@@ -261,12 +218,12 @@ void Server::handleRequest(int efd)
     if (send(efd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
         std::cout << "send error" << std::endl;
     // reset timeout.
-    if (req->isAlive())
+    /*if (req->isAlive())
     {
         std::cout << "reset client timeout" << std::endl; 
         activity[efd] = {1, NULL};
     }
-    else
+    else*/
         close(efd);
     delete resp;
 }
