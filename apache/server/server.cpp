@@ -46,9 +46,7 @@ int Server::run()
     {
         printf ("couldnt connect\n");        exit (1);
     }*/
-    //struct client cl = {0, time(NULL)};
-    activity[cfd] = cl;
-    std::cout << "new Connection giving 5 second to close " << std::endl; 
+    struct client cl = {0, time(NULL)};
     //handleRequest(cfd);
     int client_fd;
     while (true)
