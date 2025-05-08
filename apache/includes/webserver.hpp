@@ -35,6 +35,7 @@ typedef struct InetData{
 
 struct resp_h{
     unsigned int clength; // content length
+    unsigned int totallength;
     const char* keepAlive;
     unsigned int status;
     std::string contentType;

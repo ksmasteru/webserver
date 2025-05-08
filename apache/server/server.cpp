@@ -61,6 +61,7 @@ int Server::run()
                 client_fd = accept(data.sfd, (struct sockaddr *)&data.client_addr, &data.client_len);
                 if (client_fd == -1)
                     continue;
+                std::cout << "new client just client of fd " << client_fd << std::endl;
                 struct client cl = {0, time(NULL)};
                 activity[client_fd] = cl;
                 set_nonblocking(client_fd);
@@ -98,29 +99,6 @@ void Server::loadstatuscodes(const char* filepath)
     }
 }
 
-void Server::parseRequest(const std::string& request, std::map<int , std::string>& map)
-{
-    int start = 5;
-    int index = 0;
-    size_t end ;
-    std::string str;
-    std::string reqcopy = request;
-    while ((end = reqcopy.find('\n')) != std::string::npos)
-    {
-        if (!index)
-        {
-            str = reqcopy.substr(4, end - 14);
-            map[index] = str;
-            index++;
-        }
-        else
-        {
-            start = reqcopy.find(' ');
-            map[index++] = reqcopy.substr(start + 1, (end - start) - 2);
-        }
-        reqcopy = reqcopy.substr(end + 1);
-    }
-}
 
 Request* Server::generateRequest(int efd)
 {
@@ -206,16 +184,18 @@ void Server::handleRequest(int efd)
     // format of response issue.
     //std::cout << "response\n" << resp->getRes() << std::endl;
     //exit(1);
-    std::cout << resp->getRes() << std::endl; 
-    if (send(efd , resp->getRes(), strlen(resp->getRes()), 0) == -1)
+    
+    if (send(efd , resp->getRes(), resp->getSize(), 0) == -1)
         std::cout << "send error" << std::endl;
-    // reset timeout.
-    /*if (req->isAlive())
+    else
+        std::cout << "sent " << resp->getSize() << std::endl;
+        // reset timeout.
+    if (req->isAlive())
     {
         std::cout << "reset client timeout" << std::endl; 
         activity[efd] = {1, NULL};
     }
-    else*/
+    else
         close(efd);
     delete resp;
 }

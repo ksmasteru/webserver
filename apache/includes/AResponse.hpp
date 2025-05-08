@@ -22,4 +22,5 @@ class  AResponse{
         virtual void makeResponse() = 0;
         virtual const char* getRes() const = 0;
         virtual bool isAlive () const = 0;
+        virtual size_t  getSize() = 0;
 };

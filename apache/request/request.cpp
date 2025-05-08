@@ -22,7 +22,6 @@ bool isDeleteRequest(char *str)
 
 bool isHttp(char *str)
 {
-    printf("word is %s\n", str); 
     return (str[0] == 'H' && str[1] == 'T' && str[2] == 'T'
         && str[3] == 'P' && str[4] == '/');
 }
@@ -154,9 +153,6 @@ void Request::parseRequest(char* request)
                     fieldstate = LF;
                 else
                 {
-                    printf("found %d\n", request[offset]);
-                    std::cout << "field name " << fieldname << std::endl;
-                    std::cout << "field value " << fieldvalue << std::endl;
                     throw ("bad CR case\n");
                 }
             case LF:

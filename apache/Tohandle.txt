@@ -6,3 +6,6 @@ he sends it in the header.
 // send image : will require chunked, keep alive.
 
 // --> need epoll. 100%.
+
+// "Remember that images are binary files, so the server mustn't treat them as text."
+
