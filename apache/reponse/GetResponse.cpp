@@ -1,11 +1,13 @@
 #include "../includes/GetResponse.hpp"
+#include <fstream>
+#include <sys/stat.h>
+
 
 GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
 std::string>*status) : AResponse(type, req, status)
 {
     // first checks if the file exist based on this info : fill body header
     // shalow copy of request.
-    this->_FILE = (struct File) {nullptr, 0, 0 ,0, 0};
 }
 
 // response header should be last to get filled.
@@ -110,9 +112,8 @@ std::string GetResponse::requestPageBody(const char* path)
 {
     // TODO load actual request page
     // '/pages should be appended to path
-    // read the reponse page body to the vector.
     std::ifstream ifs;
-    this->res_data.status = 200; // TODO
+    this->res_data.status = 200;
     this->res_data.keepAlive = (_request->isAlive()) ? "Keep-Alive" : "Close";
     size_t extension_pos = this->_request->getRequestPath().rfind(".");
     std::string extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
@@ -157,64 +158,83 @@ std::string GetResponse::requestPageBody(const char* path)
     return responseBody;
 }
 
-void GetResponse::setFileReady(const char* path)
-{
-    std::ifstream ifs;
-    this->res_data.status = 200; // TODO
-    this->res_data.keepAlive = (_request->isAlive()) ? "Keep-Alive" : "Close";
-    size_t extension_pos = this->_request->getRequestPath().rfind(".");
-    std::string extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
-    this->_FILE.extension = extension.c_str();
-    if (strncmp(path,"pages/", sizeof("pages/")) == 0)
-    {
-        std::cout << "index path" << std::endl;
-        extension = "html";
-        ifs.open("pages/index.html");
-    }
-    else if (access(path, F_OK) == -1)
-    {
-        this->res_data.status = 404;
-        extension = "html";
-        std::cout << "couldnt find " << path << std::endl;
-        ifs.open("pages/404.html");
-    }
-    else if (access(path, R_OK) == -1)
-    {
-        this->res_data.status = 403;
-        extension = "html";
-        ifs.open("pages/403.html");
-    }
-    else if (extension.compare("ico") == 0 || extension.compare("png") == 0
-        || extension.compare("gif") == 0)
-            return (handleBinaryFile(path, extension));
-    else
-    {
-        ifs.open(path);
-        extension_pos = this->_request->getRequestPath().rfind(".");
-        extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
-    }
-    if (!ifs)
-        throw ("requestPageBody couldnt open request file");
-}
-
-void GetResponse::makeResponse()
+/*void GetResponse::makeResponse(int cfd)
 {
     std::string path = "pages" + this->_request->getRequestPath();
-    setFileReady(path.c_str());
     std::string pageBody = requestPageBody(path.c_str());
-    // a predeined size pointer? of std::vector<char> ?
-    stD::string header = RspHeader(this->res_data.clength, this->res_data.status);
-    //size_t len = this->res_data.totallength + 1;
-    this->resp_msg = new std::vector<char>(this->res_data.totallength + 1);
-    for (; filledBytes < totalBytes; filledBytes++)
-        this->resp_msg[i] = header[i];
-    // header(filledbytes. size)
+    response << RspHeader(this->res_data.clength, this->res_data.status)
+            << "\r\n"
+            << pageBody;
     char *reponse = new char[this->res_data.totallength + 1];
     strncpy(reponse, response.str().c_str(), this->res_data.totallength);
     reponse[this->res_data.totallength] = '\0';
     this->resp_msg = reponse;
+}*/
+
+void GetResponse::sendPage(const char *path, int cfd)
+{
+    //fill response detail  : extension, type, length.
+    int fd =  open(path, O_RDONLY);
+    if (fd == -1)
+        throw ("couldnt open file");
+    size_t extension_pos = this->_request->getRequestPath().rfind(".");
+    if (strcmp(path, "pages/index.html") == 0)
+        this->res_data.extension = "html";
+    else
+        this->res_data.extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
+    this->res_data.contentType = content(this->res_data.extension);
+    struct stat st;
+    fstat(fd ,&st);
+    this->res_data.clength = st.st_size;
+    std::cout << "cotent length is " << this->res_data.clength << std::endl;
+    std::string header = RspHeader(this->res_data.clength, this->res_data.status);
+    // send header
+    send(cfd, header.c_str(), header.length(), 0);
+    //read and send page body.
+    char* buffer[BUFFER_SIZE];
+    int bytesTosend = this->res_data.clength;
+    int readbytes = 0;
+    while (bytesTosend > 0)
+    {
+        readbytes = read(fd, buffer, BUFFER_SIZE);
+        if (readbytes == -1)
+            break;
+        send(cfd, buffer, readbytes, 0);
+        bytesTosend -= readbytes;
+    }
+    close (fd);
+    close (cfd);
 }
 
+void GetResponse::handleErrorPage(const char *path, int cfd)
+{
+    if (access(path, F_OK) == -1)
+    {
+        this->res_data.status = 404;
+        return (sendPage("pages/404.html", cfd));
+    }
+    else if (access(path, R_OK) == -1)
+    {
+        this->res_data.status = 403;
+        return (sendPage("pages/403.html", cfd));
+    }
+}
+
+// send repsonse and close cfd
+void GetResponse::makeResponse(int cfd)
+{
+    std::string path = "pages" + this->_request->getRequestPath();
+    this->res_data.status = 200;
+    if (path.compare("pages/") == 0)
+    {
+        std::cout << "index page" << std::endl;
+        sendPage("pages/index.html", cfd);
+    }
+    else if (access(path.c_str(),R_OK) == 0)
+        return (sendPage(path.c_str(), cfd));
+    else
+        return (handleErrorPage(path.c_str(), cfd));    
+}
 const char* GetResponse::getRes() const
 {
     return (this->resp_msg);
@@ -224,6 +244,7 @@ bool GetResponse::isAlive() const
 {
     return true;
 }
+
 
 GetResponse::~GetResponse()
 {

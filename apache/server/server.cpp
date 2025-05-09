@@ -21,9 +21,9 @@ int Server::establishServer()
     data.sfd = makePassiveSocket(&data.server_fd);
     if (data.sfd == -1)
         throw ("");
-    data.epollfd = createEpoll(&data.event, data.sfd);
+    /*data.epollfd = createEpoll(&data.event, data.sfd);
     if (data.epollfd == -1)
-        throw ("epoll");
+        throw ("epoll");*/
     /*try {
         loadstatuscodes(STATUS_PATH);
     }
@@ -39,16 +39,16 @@ int Server::establishServer()
 int Server::run()
 {
     // close connection after 5 second if no activity detected.
-    std::thread timeout_thread(manage_timeout, std::ref(activity));
-    timeout_thread.detach();
-    /*int cfd = accept(data.sfd, NULL, NULL);
+    //std::thread timeout_thread(manage_timeout, std::ref(activity));
+    //timeout_thread.detach();
+    int cfd = accept(data.sfd, NULL, NULL);
     if (cfd == -1)
     {
         printf ("couldnt connect\n");        exit (1);
-    }*/
-    struct client cl = {0, time(NULL)};
-    //handleRequest(cfd);
-    int client_fd;
+    }
+    //struct client cl = {0, time(NULL)};
+    handleRequest(cfd);
+    /*int client_fd;
     while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
@@ -76,7 +76,8 @@ int Server::run()
     }
     close(data.sfd);
     close(data.epollfd);
-    return 0;
+    return 0;*/
+    return (0);
 }
 
 void Server::loadstatuscodes(const char* filepath)
@@ -170,7 +171,7 @@ void Server::handleRequest(int efd)
     }
     AResponse* resp = generateResponse(req);
     try {
-            resp->makeResponse();
+            resp->makeResponse(efd);
         }
     catch (const char* error)
     {
@@ -184,19 +185,18 @@ void Server::handleRequest(int efd)
     // format of response issue.
     //std::cout << "response\n" << resp->getRes() << std::endl;
     //exit(1);
-    
+    /*
     if (send(efd , resp->getRes(), resp->getSize(), 0) == -1)
         std::cout << "send error" << std::endl;
     else
         std::cout << "sent " << resp->getSize() << std::endl;
-        // reset timeout.
     if (req->isAlive())
     {
         std::cout << "reset client timeout" << std::endl; 
         activity[efd] = {1, NULL};
     }
     else
-        close(efd);
+        close(efd);*/
     delete resp;
 }
 
