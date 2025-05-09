@@ -2,6 +2,12 @@
 #include "Request.hpp"
 #include "webserver.hpp"
 
+struct progress{
+    int sentBytes;
+    int sentTotal;
+    int progress; // header sent   
+};
+
 class  AResponse{
     protected:
         Request* _request;
@@ -10,10 +16,12 @@ class  AResponse{
         struct resp_h res_data;
         const char* resp_msg;// should point to
         std::ostringstream response;
+        int _client_fd;
+        struct progress _progress;
         // allocated string.
     public:
-        AResponse(std::string type, Request* req, std::map<std::string, std::string>* status) :_type(type), _request(req), resp_msg(NULL), statuscodes(status){
-        }
+        AResponse(std::string type, Request* req, std::map<std::string, std::string>* status, int client_fd) :_type(type), _request(req), resp_msg(NULL), statuscodes(status)
+        , _client_fd(client_fd){}
         virtual ~AResponse(){
             if (this->resp_msg)
                 delete []resp_msg;

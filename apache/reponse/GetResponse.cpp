@@ -4,7 +4,7 @@
 
 
 GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
-std::string>*status) : AResponse(type, req, status)
+std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 {
     // first checks if the file exist based on this info : fill body header
     // shalow copy of request.
@@ -51,14 +51,15 @@ std::string GetResponse::getTime()
 
 std::string GetResponse::RspHeader(unsigned int cLength, unsigned int code)
 {
-    std::string alive = "Close"; // will be set later;
+    std::string alive = "keep-alive"; // will be set later;
     std::ostringstream header;
     header  << RspStatusline(code)
             << "Date: " + getTime() + " \r\n"
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
-            << "Content-Length: " + intToString(cLength) + " \r\n"
-            << "Connection " + alive + " \r\n"
+            << "Transfer-Encoding: chunked \r\n"
+            //<< "Content-Length: " + intToString(cLength) + " \r\n"
+            << "Connection: " + alive + " \r\n"
             << "\r\n";
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
@@ -80,130 +81,56 @@ std::string content(std::string extension )
         {"gif",  "image/gif"},
         {"svg",  "image/svg+xml"},
         {"txt",  "text/plain"},
-        {"mp4", "text/html"},
+        {"mp4", "video/mp4"},
         {"", "text/plain"}
     };
     return contentMap[extension];
 }
 
-std::string GetResponse::handleBinaryFile(const char* path, std::string& extension)
-{
-    std::cout << "reading a binary file" << std::endl;
-    std::ifstream ifs;
-    ifs.open(path, std::ios::binary);
-    if (!ifs)
-        throw ("couldnt open binary file\n");
-    // determine file size
-    ifs.seekg(0, std::ios::end);
-    std::streamsize size = ifs.tellg();
-    ifs.seekg(0, std::ios::beg);
-    
-    std::string buffer(size, '\0');
-    if(ifs.read(&buffer[0], size))
-        std::cout << "Read " << size << " bytes into string.\n";
-    else
-        std::cout << "failed to read file" << std::endl;
-    this->res_data.clength = size;
-    this->res_data.contentType = content(extension);
-    return (buffer);
-}
-
-std::string GetResponse::requestPageBody(const char* path)
-{
-    // TODO load actual request page
-    // '/pages should be appended to path
-    std::ifstream ifs;
-    this->res_data.status = 200;
-    this->res_data.keepAlive = (_request->isAlive()) ? "Keep-Alive" : "Close";
-    size_t extension_pos = this->_request->getRequestPath().rfind(".");
-    std::string extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
-    if (strncmp(path,"pages/", sizeof("pages/")) == 0)
-    {
-        std::cout << "index path" << std::endl;
-        extension = "html";
-        ifs.open("pages/index.html");
-    }
-    else if (access(path, F_OK) == -1)
-    {
-        this->res_data.status = 404;
-        extension = "html";
-        std::cout << "couldnt find " << path << std::endl;
-        ifs.open("pages/404.html");
-    }
-    else if (access(path, R_OK) == -1)
-    {
-        this->res_data.status = 403;
-        extension = "html";
-        ifs.open("pages/403.html");
-    }
-    else if (extension.compare("ico") == 0 || extension.compare("png") == 0
-        || extension.compare("gif") == 0)
-            return (handleBinaryFile(path, extension));
-    else
-    {
-        ifs.open(path);
-        extension_pos = this->_request->getRequestPath().rfind(".");
-        extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
-    }
-    if (!ifs)
-        throw ("requestPageBody couldnt open request file");
-    std::cout << "extension is " << extension << std::endl;
-    std::string resp_buff;
-    std::stringstream  response_buffer(resp_buff);
-    response_buffer << ifs.rdbuf();
-    std::string responseBody = response_buffer.str();
-    this->res_data.clength = responseBody.length();
-    this->res_data.contentType = content(extension);
-    std::cout << "for path " << path << "content type is " << this->res_data.contentType << std::endl;
-    return responseBody;
-}
-
-/*void GetResponse::makeResponse(int cfd)
-{
-    std::string path = "pages" + this->_request->getRequestPath();
-    std::string pageBody = requestPageBody(path.c_str());
-    response << RspHeader(this->res_data.clength, this->res_data.status)
-            << "\r\n"
-            << pageBody;
-    char *reponse = new char[this->res_data.totallength + 1];
-    strncpy(reponse, response.str().c_str(), this->res_data.totallength);
-    reponse[this->res_data.totallength] = '\0';
-    this->resp_msg = reponse;
-}*/
-
-void GetResponse::sendPage(const char *path, int cfd)
+void GetResponse::sendPage(const char *path, int cfd, bool redirection)
 {
     //fill response detail  : extension, type, length.
     int fd =  open(path, O_RDONLY);
     if (fd == -1)
         throw ("couldnt open file");
     size_t extension_pos = this->_request->getRequestPath().rfind(".");
-    if (strcmp(path, "pages/index.html") == 0)
+    if (redirection)
         this->res_data.extension = "html";
     else
         this->res_data.extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
     this->res_data.contentType = content(this->res_data.extension);
+    std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
     struct stat st;
     fstat(fd ,&st);
     this->res_data.clength = st.st_size;
-    std::cout << "cotent length is " << this->res_data.clength << std::endl;
+    std::cout << "content length is " << this->res_data.clength << std::endl;
     std::string header = RspHeader(this->res_data.clength, this->res_data.status);
     // send header
     send(cfd, header.c_str(), header.length(), 0);
     //read and send page body.
-    char* buffer[BUFFER_SIZE];
+    #define BUFF 1000
+    char* buffer[BUFF];
     int bytesTosend = this->res_data.clength;
     int readbytes = 0;
+    int total = 0;
     while (bytesTosend > 0)
     {
-        readbytes = read(fd, buffer, BUFFER_SIZE);
+        readbytes = read(fd, buffer, BUFF);
         if (readbytes == -1)
+        {
+            std::cout << "read fail" << std::endl;
             break;
-        send(cfd, buffer, readbytes, 0);
+        }
+        dprintf(cfd, "%zx\r\n", readbytes);
+        total += send(cfd, buffer, readbytes, 0);
+        write(cfd, "\r\n", 2);
         bytesTosend -= readbytes;
     }
+    write(cfd, "0\r\n\r\n", 5);
+    std::cout << "remaining bytes to send " << bytesTosend << std::endl;
+    std::cout << "total sent bytes " << total << std::endl;
     close (fd);
-    close (cfd);
+    //close (cfd);
 }
 
 void GetResponse::handleErrorPage(const char *path, int cfd)
@@ -211,12 +138,12 @@ void GetResponse::handleErrorPage(const char *path, int cfd)
     if (access(path, F_OK) == -1)
     {
         this->res_data.status = 404;
-        return (sendPage("pages/404.html", cfd));
+        return (sendPage("pages/404.html", cfd, true));
     }
     else if (access(path, R_OK) == -1)
     {
         this->res_data.status = 403;
-        return (sendPage("pages/403.html", cfd));
+        return (sendPage("pages/403.html", cfd, true));
     }
 }
 
@@ -228,10 +155,10 @@ void GetResponse::makeResponse(int cfd)
     if (path.compare("pages/") == 0)
     {
         std::cout << "index page" << std::endl;
-        sendPage("pages/index.html", cfd);
+        sendPage("pages/index.html", cfd, true);
     }
     else if (access(path.c_str(),R_OK) == 0)
-        return (sendPage(path.c_str(), cfd));
+        return (sendPage(path.c_str(), cfd, false));
     else
         return (handleErrorPage(path.c_str(), cfd));    
 }
@@ -248,7 +175,6 @@ bool GetResponse::isAlive() const
 
 GetResponse::~GetResponse()
 {
-    std::cout << "KA BOOM" << std::endl;
 }
 
 size_t  GetResponse::getSize()

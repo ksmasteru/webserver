@@ -9,3 +9,18 @@ he sends it in the header.
 
 // "Remember that images are binary files, so the server mustn't treat them as text."
 
+// chunked benefits : The client (like a browser or media player) starts playback without needing to wait for the entire stream.
+    // easier on the server side.
+    // 
+// video fail : does the client send more than one request to get the video ? // allow multiplexing. yep
+// to do : fix multiplexing.
+// ater connecting where does the client write ? server socket or his socket.
+
+// :: for each new connection set socket options.
+
+    struct epoll_event ev;
+    ev.data.fd = new_fd;
+    ev.events = EPOLLIN | EPOLLHUP | EPOLLERR;
+
+    after the response has been sent you delete the connection ---> keep the response body., 
+    // in the response should have values of : progress, totalbytes, sent, clientfd. when to close a connection ?.

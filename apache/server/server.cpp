@@ -21,9 +21,9 @@ int Server::establishServer()
     data.sfd = makePassiveSocket(&data.server_fd);
     if (data.sfd == -1)
         throw ("");
-    /*data.epollfd = createEpoll(&data.event, data.sfd);
+    data.epollfd = createEpoll(&data.event, data.sfd);
     if (data.epollfd == -1)
-        throw ("epoll");*/
+        throw ("epoll");
     /*try {
         loadstatuscodes(STATUS_PATH);
     }
@@ -41,24 +41,20 @@ int Server::run()
     // close connection after 5 second if no activity detected.
     //std::thread timeout_thread(manage_timeout, std::ref(activity));
     //timeout_thread.detach();
-    int cfd = accept(data.sfd, NULL, NULL);
-    if (cfd == -1)
-    {
-        printf ("couldnt connect\n");        exit (1);
-    }
     //struct client cl = {0, time(NULL)};
-    handleRequest(cfd);
-    /*int client_fd;
+    //handleRequest(cfd);
+    int client_fd;
     while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
+        std::cout << "num events is " << num_events << std::endl;
         if (num_events == -1)
             return EXIT_FAILURE;
         for (int i = 0; i < num_events; i++)
         {
             if (data.events[i].data.fd == data.sfd)
             {
-                client_fd = accept(data.sfd, (struct sockaddr *)&data.client_addr, &data.client_len);
+                client_fd = accept(data.sfd, (struct sockaddr *)&data.client_addr, &data.client_len); //nonsense. each client has a diff addrr.
                 if (client_fd == -1)
                     continue;
                 std::cout << "new client just client of fd " << client_fd << std::endl;
@@ -76,8 +72,7 @@ int Server::run()
     }
     close(data.sfd);
     close(data.epollfd);
-    return 0;*/
-    return (0);
+    return 0;
 }
 
 void Server::loadstatuscodes(const char* filepath)
@@ -134,10 +129,10 @@ Request* Server::generateRequest(int efd)
     }*/
 }
 
-AResponse* Server::generateResponse(Request* req)
+AResponse* Server::generateResponse(Request* req, int client_fd)
 {
     if (req->getType() == "GET")
-        return (new GetResponse("GET", req, &statusCodes));
+        return (new GetResponse("GET", req, &statusCodes, client_fd));
     /*else if (req.getType() == "POST")
         return (new PostResponse("POST", req));
     else if (req.getType() == "DELETE")
