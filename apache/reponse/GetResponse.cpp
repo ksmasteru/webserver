@@ -57,8 +57,8 @@ std::string GetResponse::RspHeader(unsigned int cLength, unsigned int code)
             << "Date: " + getTime() + " \r\n"
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
-            << "Transfer-Encoding: chunked \r\n"
-            //<< "Content-Length: " + intToString(cLength) + " \r\n"
+            //<< "Transfer-Encoding: chunked \r\n"
+            << "Content-Length: " + intToString(cLength) + " \r\n"
             << "Connection: " + alive + " \r\n"
             << "\r\n";
     std::string head_msg = header.str();
@@ -121,12 +121,13 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
             std::cout << "read fail" << std::endl;
             break;
         }
-        dprintf(cfd, "%zx\r\n", readbytes);
-        total += send(cfd, buffer, readbytes, 0);
-        write(cfd, "\r\n", 2);
+        //dprintf(cfd, "%zx\r\n", readbytes);
+        total += send(cfd, buffer, readbytes, MSG_NOSIGNAL);
+        std::cout << "sent total of " << total << std::endl;
+        //write(cfd, "\r\n", 2);
         bytesTosend -= readbytes;
     }
-    write(cfd, "0\r\n\r\n", 5);
+    //write(cfd, "0\r\n\r\n", 5);
     std::cout << "remaining bytes to send " << bytesTosend << std::endl;
     std::cout << "total sent bytes " << total << std::endl;
     close (fd);

@@ -7,7 +7,9 @@
 #include "webserver.hpp"
 #include "Request.hpp"
 #include "AResponse.hpp"
+#include "Connection.hpp"
 
+class Connection;
 class Server{
     private:
         std::map<std::string, std::string> statusCodes;
@@ -16,10 +18,14 @@ class Server{
         bool loadedStatusCodes;
         std::map<int, struct client> activity;
         t_InetData data;
+        std::map <int, Connection*> connections;
     public:
         Server();
         ~Server(){
         }
+        void handleReadEvent(int, std::map<int, Connection*>*);
+        void handleWriteEvent(int, std::map<int, Connection*>*);
+        void addNewClient();
         void loadstatuscodes(const char* filepath);
         int establishServer();
         int run();
@@ -28,7 +34,7 @@ class Server{
         char *getRequest(int client_fd);
         void sendResponse(AResponse* res);
         void parseRequest(const std::string& request, std::map<int, std::string>& map);
-        AResponse* generateResponse(Request*);
+        AResponse* generateResponse(Request*, int client_fd);
 };
 
 // handle request : getRequest --> getResponse --> sendRespond

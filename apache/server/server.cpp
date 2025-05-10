@@ -36,13 +36,39 @@ int Server::establishServer()
     */return (0);
 }
 
+void Server::addNewClient()
+{
+    int client_fd = accept(data.sfd, NULL, 0);
+    if (client_fd == -1)
+        throw ("client couldnt connect");
+    std::cout << "new client Connected " << std::endl;
+    // clear
+    struct timeval timeout;
+    // set starting time in client, time map close the connection if times exces 10.
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+    if (setsockopt(data.sfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
+        throw std::runtime_error("setsockopt failed");
+    struct epoll_event event;
+    event.events = EPOLLIN | EPOLLHUP | EPOLLERR; 
+    event.data.fd = client_fd;
+    if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
+        throw ("epoll_ctl fail");
+    set_nonblocking(client_fd);
+}
+
+void Server::handleReadEvent(int fd, std::map<int, Connection*> *connections)
+{
+    
+}
+
+void Server::handleWriteEvent(int fd, std::map<int, Connection*> *connections)
+{
+
+}
+
 int Server::run()
 {
-    // close connection after 5 second if no activity detected.
-    //std::thread timeout_thread(manage_timeout, std::ref(activity));
-    //timeout_thread.detach();
-    //struct client cl = {0, time(NULL)};
-    //handleRequest(cfd);
     int client_fd;
     while (true)
     {
@@ -53,21 +79,11 @@ int Server::run()
         for (int i = 0; i < num_events; i++)
         {
             if (data.events[i].data.fd == data.sfd)
-            {
-                client_fd = accept(data.sfd, (struct sockaddr *)&data.client_addr, &data.client_len); //nonsense. each client has a diff addrr.
-                if (client_fd == -1)
-                    continue;
-                std::cout << "new client just client of fd " << client_fd << std::endl;
-                struct client cl = {0, time(NULL)};
-                activity[client_fd] = cl;
-                set_nonblocking(client_fd);
-                data.event.events = EPOLLIN | EPOLLET;
-                data.event.data.fd = client_fd;
-                if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &data.event) == -1)
-                    close(data.clientfd);
-            }
-            else
-                handleRequest(data.events[i].data.fd);
+                addNewClient();
+            else if (data.events[i].data.fd & EPOLLIN) /* data can be read */
+                handleReadEvent(data.events[i].data.fd, Connections);
+            else if (data.events[i].data.fd & EPOLLOUT) /* data can be sent*/
+                handleWriteEvent(data.events[i].data_fd, Connections);
         }
     }
     close(data.sfd);
@@ -164,7 +180,7 @@ void Server::handleRequest(int efd)
         std::cout << error << std::endl;
         return ;
     }
-    AResponse* resp = generateResponse(req);
+    AResponse* resp = generateResponse(req, efd);
     try {
             resp->makeResponse(efd);
         }
