@@ -3,10 +3,13 @@
 #include <map>
 #pragma once
 
+enum mainState{
+    ReadingRequestHeader,
+    ReadingRequestBody,
+    Done
+};
 
-class  Request{
-    private:
-        enum{
+enum subState{
         start = 0,
         method_name,
         after_method_space,
@@ -21,13 +24,24 @@ class  Request{
         dot,
         httpminor,
         request_uri_done,
-    }state;
+        name,
+        OWS1,
+        val,
+        CR,
+        LF,
+        doneParsing
+};
+
+class  Request{ // read event.
     std::string RawRequest;
     std::string type;
     std::string qkey;
     std::string qvalue;
+    mainState mainState;
+    subState subState;
     char        httpGreater;
     char        httpMinor;
+    int totalReadBytes;
     int _bytesread;
     bool keep_alive;
     std::string targetUri;
@@ -38,20 +52,29 @@ class  Request{
     Request& operator=(Request& rhs);
     std::map<int, std::string> parse_map;
     public:
-    Request(char *buffer, int bytesread);
+    Request();
     std::string getHttpVersion();
     void addtoheaders(std::string& key, std::string& val);
     std::string getRequestPath();
     const std::string& getRawRequest() const;
     const std::string& getType() const;
-    void parseRequest(char* request);
-    bool parseRequestLine(char *request);
+    void parseRequestHeader(char* request, int readBytes);
+    void parseRequestLine(char *request, int readBytes);
+    void parseRequestBody(char *request, int ReadBytes);
     std::string getMapAtIndex(unsigned int index);
     void printRequestLine();
     void printHeaderFields();
     void setConnectionType();
-    bool isAlive(); 
+    bool isAlive();
+    void reset(){
+        RawRequest.clear();
+        type.clear();
+        qkey.clear();
+        qvalue.clear();
+        mainState = ReadingRequestHeader;
+        subState = start;
+        totalReadBytes = 0;
+        _bytesread = 0;
+    } 
     ~Request(){}
 };
-
-// reponse should take a request ptr ?

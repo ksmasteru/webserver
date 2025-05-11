@@ -55,16 +55,63 @@ void Server::addNewClient()
     if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
         throw ("epoll_ctl fail");
     set_nonblocking(client_fd);
+    // create a connection object and att it to <fd, connection>map;
+    Connection* new_client = new Connection(client_fd, timeout);
+    this->clients[client_fd] = new_client;
 }
 
-void Server::handleReadEvent(int fd, std::map<int, Connection*> *connections)
+void Server::handleReadEvent(int fd)
 {
-    
+    if (clients.find(fd) == clients.end())
+    {
+        std::cout << "client of fd: " << fd << " was not found" << std::endl;
+        return ;
+    }
+    char buffer[BUFFER_SIZE];
+    // receiv.
+    int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
+    if (readBytes == -1)
+        throw ("recv failed");
+    switch (clients[fd]->getState())
+    {
+        case start:
+            clients[fd]->request.parseRequestHeader(buffer, readBytes);
+            break;
+        case readingRequestHeader:
+            clients[fd]->request.parseRequestHeader(buffer, readBytes);
+            break;
+        case readingRequestBody:
+            clients[fd]->request.parseRequestBody(buffer, readBytes);
+            break;
+        case sendingResponse:
+            if (clients[fd]->response.getState() == done)
+            {
+                clients[fd]->setState(done);
+                break;
+            }
+        case done:
+            clients[fd]->request.reset();
+            // create a new request or should i wait for the previous to finish
+            // store 
+    }
+    // if the user sends a new reques and he previous request wasnt answered but this request
+    // on hold until the queued request is ansewred.
 }
 
-void Server::handleWriteEvent(int fd, std::map<int, Connection*> *connections)
+void Server::handleWriteEvent(int fd)
 {
-
+    // writing to client of fd.
+    // minium write operation should cover the header.
+    if (clients.find(fd) == clients.end())
+    {
+        std::cout << "client not found " << std::endl;
+        return ;
+    }
+    // make reponse then writet it.
+    // too big of a file : state -> sending body :
+    // attributees of response .
+    // handling get first.
+    switch (this->clients[fd]->reponse.getSatate())
 }
 
 int Server::run()
@@ -81,9 +128,9 @@ int Server::run()
             if (data.events[i].data.fd == data.sfd)
                 addNewClient();
             else if (data.events[i].data.fd & EPOLLIN) /* data can be read */
-                handleReadEvent(data.events[i].data.fd, Connections);
+                handleReadEvent(data.events[i].data.fd);
             else if (data.events[i].data.fd & EPOLLOUT) /* data can be sent*/
-                handleWriteEvent(data.events[i].data_fd, Connections);
+                handleWriteEvent(data.events[i].data.fd);
         }
     }
     close(data.sfd);

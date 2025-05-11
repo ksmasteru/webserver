@@ -3,6 +3,11 @@
 #include <sys/stat.h>
 
 
+GetResponse::GetResponse()
+{
+
+}
+
 GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
 std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 {

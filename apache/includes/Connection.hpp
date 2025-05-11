@@ -1,28 +1,40 @@
 #pragma once
 
-#include "AResponse.hpp"
+#include "GetResponse.hpp"
 #include "Request.hpp"
 #include "server.hpp"
 
 // std::map <int, Connection*> map;
 // each client has a connection.
-enum{
+enum ConnectionState{
     start,
-    readingRequest,
-    doneReadingRequest,
-    ResponseHeaderSent,
-    sendingResponseBody,
+    readingRequestHeader,
+    readingRequestBody,
+    sendingResponse,
+    hold,
     done,
-}connection_state;
+};
+
 class Connection{
     private:
-        AResponse *resp;
-        Request request;
-        int client_fd;
+        //AResponse *resp;
+        int _client_fd;
         // time connection started;
-        struct timeval timeout;
-        int state;
+        struct timeval _timeout;
+        ConnectionState state;
     public:
-        Connection();
+        Request request;
+        GetResponse response;
+        Connection(int client_fd, struct timeval& timeout){
+            _client_fd = client_fd;
+            _timeout = timeout;
+            state = start;
+        }
+        ConnectionState getState()
+        {
+            return (this->state);
+        }
+        void resetConnection(){
+        }
         ~Connection();
 };

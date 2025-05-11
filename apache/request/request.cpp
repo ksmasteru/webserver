@@ -2,6 +2,7 @@
 #include <map>
 #include <string>
 #include <iostream>
+#include <cstring>
 
 bool isGetRequest(char *str)
 {
@@ -40,16 +41,13 @@ void Request::setConnectionType()
         }
     }
 }
-
-Request::Request(char* buffer, int bytesread)
+/*if request type != get and there is still data after parssing 
+header throw bad request.*/
+Request::Request()
 {
-    this->RawRequest = buffer;
-    _bytesread = bytesread;
-    this->state = start;
+    mainState = ReadingRequestHeader;
+    subState = start;
     offset = 0;
-    parseRequest(buffer);
-    setConnectionType();
-    //this->requestPath = this->getMapAtIndex(0);
 }
 
 /*const std::map<int, std::string>&   Request::getMap() const{
@@ -77,7 +75,6 @@ void Request::printHeaderFields()
 }
 bool unvalidheaderVal(std::string& val)
 {
-    // val should at most have one white at the end.
     size_t i = val.length() - 1;
     int n = 0;
     while (isspace(val[i--]))
@@ -88,26 +85,17 @@ bool unvalidheaderVal(std::string& val)
     return (false);
 }
 
-void Request::parseRequest(char* request)
+void Request::parseRequestHeader(char* request, int readBytes)
 {
-    //offset and total read
-    enum
-    {
-        name,
-        OWS1,
-        val,
-        CR,
-        LF,
-    }fieldstate;
+
     char c;
-    fieldstate = name;
     std::string fieldname, fieldvalue;
-    if (!parseRequestLine(request))
-        throw ("bad request\n");
+    _bytesread = readBytes;
+    parseRequestLine(request, readBytes);
     for (; offset < _bytesread; offset++)
     {
         c = request[offset];
-        switch (fieldstate)
+        switch (this->subState)
         {
             case name:
                 if (c == '\r' || c == '\n')
@@ -118,13 +106,13 @@ void Request::parseRequest(char* request)
                 {
                     if (fieldname.empty())
                         throw ("empty field name\n"); 
-                    fieldstate = OWS1;
+                    this->subState = OWS1;
                 }
                 else
                     fieldname += c;
                 break;
             case OWS1:
-                fieldstate = val;
+                this->subState = val;
                 if (isspace(c))
                     break;
             case val:
@@ -132,25 +120,23 @@ void Request::parseRequest(char* request)
                 {
                     if (fieldvalue.empty())
                         throw("emptyvalue\n");
-                    fieldstate = CR;
+                    this->subState = CR;
                 }
                 else
                 {
                     fieldvalue += c;
                     break;
                 }
-            case CR: // this is optional.
-                // field value should have more than one space
-                // at the end.
+            case CR:
                 if (unvalidheaderVal(fieldvalue))
                     throw ("bad header val\n");
                 if (c == '\r')
                 {
-                    fieldstate = LF;
+                    this->subState = LF;
                     break;
                 }
                 else if (c == '\n')
-                    fieldstate = LF;
+                    this->subState = LF;
                 else
                 {
                     throw ("bad CR case\n");
@@ -158,65 +144,61 @@ void Request::parseRequest(char* request)
             case LF:
                 if (c != '\n')
                     throw ("no new line\n");
-                fieldstate = name;
+                this->subState = name;
                 headers[fieldname] = fieldvalue;
                 fieldvalue.clear();
                 fieldname.clear();
                 break;
         }
     }
-    if (fieldstate != name || !fieldname.empty())
+    if (this->subState != name || !fieldname.empty())
         throw ("bad request field\n");
-    //printHeaderFields();
+    else
+    {
+        this->subState = doneParsing;
+        if (this->getType().compare("GET") == 0 || this->getType().compare("DELETE") == 0)
+        {
+            if (offset != _bytesread)
+            {
+                std::cout << "offset: " << offset << " bytes read " << _bytesread << std::endl;
+                throw ("bad request body");
+            }
+            this->mainState = Done;
+            std::memset(request, 0, readBytes);
+        }
+        else
+            this->mainState = ReadingRequestBody;
+    }
 }
 
 void Request::addtoheaders(std::string& key, std::string& value)
 {
     headers[key] = value;
 }
-bool Request::parseRequestLine(char *request)
+
+void Request::parseRequestLine(char *request, int readBytes)
 {
-    enum{
-        start = 0,
-        method_name,
-        after_method_space,
-        request_uri,
-        question_mark,
-        query_equal_mark,
-        querykey,
-        queryValue,     
-        spaceafterurl,
-        HTTPword,
-        httpgreat,
-        dot,
-        httpminor,
-        CR,
-        LF
-    }state;
+    this->subState = start;
     char c;
-    state = start;
     int first;
-    for (;offset < _bytesread; offset++)
+    for (;offset < readBytes; offset++)
     {
         c = request[offset];
-        switch (state)
+        switch (this->subState)
         {
             case start:
                 first = offset;
-                if (c == '\r' || c == '\n') // skips this line ?
+                if (c == '\r' || c == '\n')
                     break;
                 if ((c < 'A' || c > 'Z') && c != '_' && c != '-')
-                    return (printf("bad request start\n"));
+                    throw ("bad request start");
                 // else move on.
-                state = method_name;
+                this->subState = method_name;
                 break;
-            case method_name: // check valid characters till space
+            case method_name:
                 if (c == ' ')
                 {
-                    // calculate the diff between begin and end;
-                    //printf("i - 1first is %d\n", offset - first);
                     int n = offset - first;
-                    //printf("to compare is %s\n", offset + start);
                     switch (n)
                     {
                         case 3: // Get
@@ -232,36 +214,34 @@ bool Request::parseRequestLine(char *request)
                                 this->type = "DELETE";
                             break;
                         default:
-                            return (printf("Bad Request method name\n"));
+                            throw("Bad Request method name\n");
                     } 
                     if (this->type.empty())
-                        return (printf("bad request name\n")); 
-                    state = after_method_space;
+                        throw("bad request name\n"); 
+                    this->subState = after_method_space;
                     break;
                 }
                 if ((c < 'A' || c > 'Z') && c != '_' && c != '-')
-                    return (printf("http parse invalid method"));
+                    throw("http parse invalid method");
                 break;
                 case after_method_space: // this code focuses on origin form 
                     //printf("after method space\n");
                     if (c == '/') // makes you jump host parsing
                     {
                         this->targetUri += c;
-                        state = request_uri;
+                        this->subState = request_uri;
                         // also mark the start and end of each field
                         break;
                     }
-                    return (printf("bad request no slash\n"));
-                case request_uri: // /path?key1=val1&key2=val2&key3=val3
-                    // request uri form first char to ? or space
-                    //printf("request uri c:%c\n",c);
+                    throw("bad request no slash\n");
+                case request_uri:
                     switch (c)
                     {
                         case '?':
-                            state = question_mark;
+                            this->subState = question_mark;
                             break;
                         case ' ':
-                            state = spaceafterurl;
+                            this->subState = spaceafterurl;
                             break;
                         default :
                             this->targetUri += c;
@@ -269,40 +249,38 @@ bool Request::parseRequestLine(char *request)
                     }
                     break;
                 case question_mark: // ?'fdsfds'=fdfsd
-                    printf("question mark\n");
                     switch (c)
                     {
                         case '=':
-                            state = query_equal_mark;
+                            this->subState = query_equal_mark;
                             break;
                         case ' ':
-                            return printf("bad request question mark no value\n");
+                            throw("bad request question mark no value\n");
                         case '?':
-                            return printf("bad request multiple '?'\n");
+                            throw("bad request multiple '?'\n");
                         case '&':
-                            return printf("bad request no key before &\n");
+                            throw("bad request no key before &\n");
                         default:
                             this->qkey += c;
                             break;
                     }
                     break;
                 case query_equal_mark:
-                    printf("q equal mark c:%c\n", c);
                     if (this->qkey.empty())
-                        return (printf("bad request no query key\n"));
+                        throw("bad request no query key\n");
                     if (c < 0x20 || c == 0x7f || c == '?') /*no printib chars*/
-                        return (printf("bad request uri\n"));
+                        throw("bad request uri\n");
                     if(c == ' ' || c == '&')
                     {
                         if (this->qvalue.empty())
-                            return (printf("bad reqeust query done\n"));
+                            throw("bad reqeust query done\n");
                         this->queries[this->qkey] = this->qvalue;
                         this->qkey.clear();
                         this->qvalue.clear();
                         if (c == ' ')
-                            state = spaceafterurl;
+                            this->subState = spaceafterurl;
                         else
-                            state = querykey;
+                            this->subState = querykey;
                         break;
                     }
                     else
@@ -310,39 +288,39 @@ bool Request::parseRequestLine(char *request)
                     break;
                 case querykey:
                     if (c == '&' || c == ' ' || c == '?')
-                        return (printf("bad request\n"));
+                        throw("bad request\n");
                     if (c == '=')
                     {
-                        state = queryValue;
+                        this->subState = queryValue;
                         break;
                     }
                     this->qkey += c;
                     break;
                 case queryValue:
                     if (this->qkey.empty())
-                        return printf("bad request : no query key\n");
+                        throw("bad request : no query key\n");
                     if (c == '?')
-                        return (printf("bad request multiple '?'\n"));
+                        throw("bad request multiple '?'\n");
                     if (c == '&' || c == ' ')
                     {
                         if (this->qvalue.empty())
-                            return (printf("bad reqeust query done\n"));
+                            throw("bad reqeust query done\n");
                         this->queries[this->qkey] = this->qvalue;
                         this->qkey.clear();
                         this->qvalue.clear();
                         if (c == '&')
-                            state = querykey;
+                            this->subState = querykey;
                         else
-                            state = queryValue;
+                            this->subState = queryValue;
                         break;
                     }
                     this->qvalue += c;
                     break;
                 case spaceafterurl:
                     if (c != 'H')
-                        return printf(("bad request\n"));
+                        throw("bad request\n");
                     first = offset;
-                    state = HTTPword;
+                    this->subState = HTTPword;
                     break;
                 case HTTPword:
                     switch (c)
@@ -350,16 +328,15 @@ bool Request::parseRequestLine(char *request)
                         case '/':
                         {
                             int n = offset - first;
-                            //printf("first is %d n is %d\n", first, n);
                             switch(n)
                             {
                                 case 4:
                                     if (!isHttp(request + first))
-                                        return printf(("bad http word1\n"));
-                                    state = httpgreat;
+                                        throw("bad http word1\n");
+                                    this->subState = httpgreat;
                                     break;
                                 default:
-                                    return (printf("bad http word2\n"));
+                                    throw("bad http word2\n");
                             }
                         }
                         default:
@@ -368,35 +345,45 @@ bool Request::parseRequestLine(char *request)
                 break;
                 case httpgreat:
                     if (c != '1' && c != '0')
-                        return (printf("bad http version\n"));
+                        throw("bad http version\n");
                     this->httpGreater = c;                
-                    state = dot;
+                    this->subState = dot;
                     break;
                 case dot:
                     if (c != '.')
-                        return (printf("no dot in http format\n"));
-                    state = httpminor;
+                        throw("no dot in http format\n");
+                    this->subState = httpminor;
                     break;
                 case httpminor:
                     if (c != '1' && c != '0')
-                        return printf("bad http minor format\n");
+                        throw("bad http minor format\n");
                     this->httpMinor = c;
-                    state = CR;
+                    this->subState = CR;
                     break;
-                case CR: // demo parsing 
+                case CR:
                     if (c != '\r')
-                        return printf("bad request\n");
-                    state = LF;
+                        throw("bad request\n");
+                    this->subState = LF;
                     break;
                 case LF:
                     if (c != '\n')
                         throw ("no new line at end\n");
                     offset++;
-                    return true;
+                    this->subState = name;
+                    return ;// ?
             }
     }
-    return (false);
 }
+
+void Request::parseRequestBody(char *request, int readBytes)
+{
+    // TO DO when handling post request.
+    if (offset < readBytes)
+    {
+        std::cout << "say hi" << std::endl;    
+    }
+}
+
 // to avoid copying the map each time. 
 std::string Request::getMapAtIndex(unsigned int index)
 {

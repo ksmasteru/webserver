@@ -81,6 +81,8 @@
         "mutex": "cpp",
         "stack": "cpp",
         "__string": "cpp",
-        "execution": "cpp"
+        "execution": "cpp",
+        "condition_variable": "cpp",
+        "list": "cpp"
     }
 }

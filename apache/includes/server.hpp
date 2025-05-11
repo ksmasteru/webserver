@@ -18,13 +18,13 @@ class Server{
         bool loadedStatusCodes;
         std::map<int, struct client> activity;
         t_InetData data;
-        std::map <int, Connection*> connections;
+        std::map <int, Connection*> clients;
     public:
         Server();
         ~Server(){
         }
-        void handleReadEvent(int, std::map<int, Connection*>*);
-        void handleWriteEvent(int, std::map<int, Connection*>*);
+        void handleReadEvent(int);
+        void handleWriteEvent(int);
         void addNewClient();
         void loadstatuscodes(const char* filepath);
         int establishServer();

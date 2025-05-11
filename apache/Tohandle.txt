@@ -24,3 +24,6 @@ he sends it in the header.
 
     after the response has been sent you delete the connection ---> keep the response body., 
     // in the response should have values of : progress, totalbytes, sent, clientfd. when to close a connection ?.
+
+
+// check the new request class.
