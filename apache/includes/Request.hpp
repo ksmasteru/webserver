@@ -2,6 +2,7 @@
 #include <string>
 #include <map>
 #pragma once
+#include <iostream>
 
 enum mainState{
     ReadingRequestHeader,
@@ -45,7 +46,6 @@ class  Request{ // read event.
     int _bytesread;
     bool keep_alive;
     std::string targetUri;
-    int offset;
     std::map<std::string, std::string> queries;
     std::map<std::string, std::string> headers;
     Request(Request& rhs, int bytesread);
@@ -59,7 +59,7 @@ class  Request{ // read event.
     const std::string& getRawRequest() const;
     const std::string& getType() const;
     void parseRequestHeader(char* request, int readBytes);
-    void parseRequestLine(char *request, int readBytes);
+    void parseRequestLine(char *request, int readBytes, int &offset);
     void parseRequestBody(char *request, int ReadBytes);
     std::string getMapAtIndex(unsigned int index);
     void printRequestLine();
@@ -67,6 +67,7 @@ class  Request{ // read event.
     void setConnectionType();
     bool isAlive();
     void reset(){
+        std::cout << "reset request ..." << std::endl;
         RawRequest.clear();
         type.clear();
         qkey.clear();
@@ -75,6 +76,9 @@ class  Request{ // read event.
         subState = start;
         totalReadBytes = 0;
         _bytesread = 0;
-    } 
+    }
+    int getState(){
+        return this->mainState;
+    }
     ~Request(){}
 };

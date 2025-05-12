@@ -72,27 +72,17 @@ void Server::handleReadEvent(int fd)
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
         throw ("recv failed");
-    switch (clients[fd]->getState())
+    switch (clients[fd]->request.getState())
     {
-        case start:
+        case ReadingRequestHeader:
             clients[fd]->request.parseRequestHeader(buffer, readBytes);
             break;
-        case readingRequestHeader:
-            clients[fd]->request.parseRequestHeader(buffer, readBytes);
-            break;
-        case readingRequestBody:
+        case ReadingRequestBody:
             clients[fd]->request.parseRequestBody(buffer, readBytes);
             break;
-        case sendingResponse:
-            if (clients[fd]->response.getState() == done)
-            {
-                clients[fd]->setState(done);
-                break;
-            }
-        case done:
-            clients[fd]->request.reset();
-            // create a new request or should i wait for the previous to finish
-            // store 
+        default:
+            std::cout << "waiting for the response to finish" << std::endl;
+            break;
     }
     // if the user sends a new reques and he previous request wasnt answered but this request
     // on hold until the queued request is ansewred.
@@ -107,13 +97,22 @@ void Server::handleWriteEvent(int fd)
         std::cout << "client not found " << std::endl;
         return ;
     }
-    // make reponse then writet it.
+    if (clients[fd]->request.getState() != Done) /*change into unique labels*/
+    {
+        std::cout << "client of fd not ready to receive data " << std::endl;
+        return ;
+    }
+    // make reponse then write it.
     // too big of a file : state -> sending body :
     // attributees of response .
     // handling get first.
-    switch (this->clients[fd]->reponse.getSatate())
+    clients[fd]->response.makeResponse(fd);
+    if (clients[fd]->response.getState() == Done) //  the last reponse completed  the file
+    {
+        clients[fd]->request.reset();
+        clients[fd]->response.reset();
+    }
 }
-
 int Server::run()
 {
     int client_fd;
@@ -158,105 +157,6 @@ void Server::loadstatuscodes(const char* filepath)
     }
 }
 
-
-Request* Server::generateRequest(int efd)
-{
-    //struct client cl = data.activity[data.clientfd]; // :?
-    char buffer[BUFFER_SIZE];
-    //std::cout << "data client fd : " << data.clientfd << std::endl;
-    ssize_t bytes_read = read(efd, buffer, BUFFER_SIZE - 1);
-    //std::cout << "bytes read : " << bytes_read <<  "buffer : " << buffer << std::endl;
-    if (bytes_read <= 0)
-    {
-        close(data.clientfd);
-        throw ("read :: generateRequest");
-    }
-    buffer[bytes_read] = '\0';
-    //std::ofstream ofs("get.txt");
-    //ofs << buffer;
-    //std::map<int, std::string> map;
-    //std::string buf = buffer;
-    //parseRequest(buf, map);
-    //Request req(map, buf);
-    // which class should allocate map and buffer?
-    Request *req1 = new Request(buffer, bytes_read);
-    
-    return req1; // mablansh t returni this/
-    /*
-    if (requestBuffer.find("GET") != std::string::npos)
-        return ();
-    else if(Rawrequest.find("POST") != std::string::npos){
-        std::cout << "request " << request;
-        close(client_fd);
-        return ;
-    }*/
-}
-
-AResponse* Server::generateResponse(Request* req, int client_fd)
-{
-    if (req->getType() == "GET")
-        return (new GetResponse("GET", req, &statusCodes, client_fd));
-    /*else if (req.getType() == "POST")
-        return (new PostResponse("POST", req));
-    else if (req.getType() == "DELETE")
-        return (new DelResponse("DELETE", req));*/
-    //else
-      //  return (new BadRequest(req)); // TODO
-    std::cout << "bad request" << std::endl;
-    return (nullptr);
-}
-
-void Server::sendResponse(AResponse* resp)
-{
-    std::cout << "send reponse called" << std::endl;
-    // TODO chubked response isnt handled yet;
-    if (send(this->data.clientfd, resp->getRes(), strlen(resp->getRes()), 0) == -1)
-        std::cout << "send error" << std::endl;
-}
-
-void Server::handleRequest(int efd)
-{
-    // create thread here.
-    // need epoll. 
-    Request* req;
-    try {
-        req = generateRequest(efd);
-    }
-    catch (const char* error)
-    {
-        std::cout << error << std::endl;
-        return ;
-    }
-    AResponse* resp = generateResponse(req, efd);
-    try {
-            resp->makeResponse(efd);
-        }
-    catch (const char* error)
-    {
-        std::cout << error << std::endl;
-        exit (1); 
-    }
-    catch (std::exception& e)
-    {
-        std::cout << e.what() << std::endl;
-    }
-    // format of response issue.
-    //std::cout << "response\n" << resp->getRes() << std::endl;
-    //exit(1);
-    /*
-    if (send(efd , resp->getRes(), resp->getSize(), 0) == -1)
-        std::cout << "send error" << std::endl;
-    else
-        std::cout << "sent " << resp->getSize() << std::endl;
-    if (req->isAlive())
-    {
-        std::cout << "reset client timeout" << std::endl; 
-        activity[efd] = {1, NULL};
-    }
-    else
-        close(efd);*/
-    delete resp;
-}
 
 int main()
 {

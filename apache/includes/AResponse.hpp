@@ -22,6 +22,7 @@ class  AResponse{
     public:
         AResponse(std::string type, Request* req, std::map<std::string, std::string>* status, int client_fd) :_type(type), _request(req), resp_msg(NULL), statuscodes(status)
         , _client_fd(client_fd){}
+        AResponse(){}
         virtual ~AResponse(){
             if (this->resp_msg)
                 delete []resp_msg;

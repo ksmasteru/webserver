@@ -3,7 +3,7 @@
 #include "AResponse.hpp"
 
 enum  ResponseState{
-    headerSent,
+    sendingheader,
     sendingBody,
     done
 };
@@ -11,6 +11,7 @@ class GetResponse : public AResponse
 {
     private:
         int sentBytes;
+        int fileOffset;
         ResponseState state;
     public:
 
@@ -18,18 +19,27 @@ class GetResponse : public AResponse
         GetResponse();
         virtual ~GetResponse();
         void  makeResponse(int cfd);
+        void    getFileReady(int fd);
         std::string getTime();
         std::string makeRspHeader();
         std::string RspHeader(unsigned int cLength, unsigned int code);
         std::string RspStatusline(unsigned int code); 
         std::string requestPageBody(const char* path);
+        void    sendHeader(const char *, int, bool);
         void    sendPage(const char *path, int cfd, bool redirection);
         void    handleErrorPage(const char *path, int cfd);
         const char* getRes() const;
         size_t  getSize();
         bool isAlive() const;
         int getState(){return this->state;}
-        void setState(ResponseState& st){
+        void setState(ResponseState st){
             state = st;
+        }
+        void reset()
+        {
+            std::cout << "reseting getResponse..." << std::endl;
+            sentBytes = 0;
+            fileOffset = 0;
+            state = sendingheader;
         }
 };

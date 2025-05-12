@@ -30,11 +30,8 @@ class Server{
         int establishServer();
         int run();
         void handleRequest(int efd);
-        Request* generateRequest(int efd);
         char *getRequest(int client_fd);
-        void sendResponse(AResponse* res);
         void parseRequest(const std::string& request, std::map<int, std::string>& map);
-        AResponse* generateResponse(Request*, int client_fd);
 };
 
 // handle request : getRequest --> getResponse --> sendRespond

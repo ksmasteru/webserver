@@ -47,7 +47,6 @@ Request::Request()
 {
     mainState = ReadingRequestHeader;
     subState = start;
-    offset = 0;
 }
 
 /*const std::map<int, std::string>&   Request::getMap() const{
@@ -87,11 +86,14 @@ bool unvalidheaderVal(std::string& val)
 
 void Request::parseRequestHeader(char* request, int readBytes)
 {
-
+    // each time enters with a new char buffer
     char c;
+    int offset = 0;
     std::string fieldname, fieldvalue;
     _bytesread = readBytes;
-    parseRequestLine(request, readBytes);
+    if (this->subState < name)
+        parseRequestLine(request, readBytes, offset); // increment offset;
+    std::cout << "after parsing request line offset is "<< offset << " susbstate " << subState << std::endl;
     for (; offset < _bytesread; offset++)
     {
         c = request[offset];
@@ -149,6 +151,10 @@ void Request::parseRequestHeader(char* request, int readBytes)
                 fieldvalue.clear();
                 fieldname.clear();
                 break;
+            default:
+                std::cout << "bad value for request line" << std::endl;
+                return ;
+                break;
         }
     }
     if (this->subState != name || !fieldname.empty())
@@ -164,11 +170,12 @@ void Request::parseRequestHeader(char* request, int readBytes)
                 throw ("bad request body");
             }
             this->mainState = Done;
-            std::memset(request, 0, readBytes);
         }
         else
             this->mainState = ReadingRequestBody;
+            // !!!should parse request body with the remaing unread bytes!! readybtes - offset
     }
+    std::cout << "request header parsed successfully" << std::endl;
 }
 
 void Request::addtoheaders(std::string& key, std::string& value)
@@ -176,7 +183,7 @@ void Request::addtoheaders(std::string& key, std::string& value)
     headers[key] = value;
 }
 
-void Request::parseRequestLine(char *request, int readBytes)
+void Request::parseRequestLine(char *request, int readBytes, int &offset)
 {
     this->subState = start;
     char c;
@@ -371,6 +378,9 @@ void Request::parseRequestLine(char *request, int readBytes)
                     offset++;
                     this->subState = name;
                     return ;// ?
+                default:
+                    throw ("wrong state");
+                    break;
             }
     }
 }
@@ -378,10 +388,7 @@ void Request::parseRequestLine(char *request, int readBytes)
 void Request::parseRequestBody(char *request, int readBytes)
 {
     // TO DO when handling post request.
-    if (offset < readBytes)
-    {
-        std::cout << "say hi" << std::endl;    
-    }
+    std::cout << "say hi" << std::endl;
 }
 
 // to avoid copying the map each time. 

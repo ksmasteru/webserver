@@ -5,7 +5,8 @@
 
 GetResponse::GetResponse()
 {
-
+    fileOffset = 0;
+    sentBytes = 0;
 }
 
 GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
@@ -18,7 +19,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 // response header should be last to get filled.
 
 std::string GetResponse::RspStatusline(unsigned int code)
-{
+{ 
     std::string statusCode = intToString(code);
     std::string Response;
     //403: Forbidden
@@ -92,12 +93,8 @@ std::string content(std::string extension )
     return contentMap[extension];
 }
 
-void GetResponse::sendPage(const char *path, int cfd, bool redirection)
+void GetResponse::sendHeader(const char *path, int cfd, bool redirection)
 {
-    //fill response detail  : extension, type, length.
-    int fd =  open(path, O_RDONLY);
-    if (fd == -1)
-        throw ("couldnt open file");
     size_t extension_pos = this->_request->getRequestPath().rfind(".");
     if (redirection)
         this->res_data.extension = "html";
@@ -106,19 +103,60 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
     this->res_data.contentType = content(this->res_data.extension);
     std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
     struct stat st;
-    fstat(fd ,&st);
+    stat(path ,&st);
     this->res_data.clength = st.st_size;
     std::cout << "content length is " << this->res_data.clength << std::endl;
     std::string header = RspHeader(this->res_data.clength, this->res_data.status);
-    // send header
-    send(cfd, header.c_str(), header.length(), 0);
-    //read and send page body.
-    #define BUFF 1000
-    char* buffer[BUFF];
+    int sent = send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL);
+    // header is guaranted to be less than buffer size.
+    if (sent == -1)
+        throw ("sending heade error");
+    sentBytes += sent;
+    // setting new stat for the response
+    this->state = sendingBody;
+}
+
+void GetResponse::getFileReady(int fd)
+{
+    off_t new_offset = lseek(fd, fileOffset, SEEK_SET);
+    if (new_offset == -1)
+        throw ("bad file seek");
+}
+
+void GetResponse::sendPage(const char *path, int cfd, bool redirection)
+{
+    // you could at the start open the file and keep it open
+    // this way you dont have to lseek or multiple open close.
+    // you only close after timeout or response all sent.
+    sentBytes = 0;
+    if (this->getState() == sendingheader)
+        sendHeader(path, cfd, redirection);
+    int R_BUFF = BUFFER_SIZE - sentBytes;
+    if (R_BUFF < 2)
+        throw ("too long of a header?");
+    int fd =  open(path, O_RDONLY);
+    if (fd == -1)
+        throw ("couldnt open file");
+    char* buffer[R_BUFF];
     int bytesTosend = this->res_data.clength;
-    int readbytes = 0;
-    int total = 0;
-    while (bytesTosend > 0)
+    // set the file cursor to the last offset.
+    int readbytes = read(fd, buffer, R_BUFF);
+    if (readbytes < 0)
+        throw ("read fail");
+    getFileReady(fd);
+    int sent = send(cfd,  buffer, readbytes, 0);
+    // if sent is lesser thn readbytes it means this is the last send.
+    if (sent == -1)
+    {
+        close (fd);
+        throw ("send fail"); // if sending fail --> handle this.
+    }
+    if (sent < readbytes || readbytes == 0) // here you should reset the request
+        this->state = done;
+    fileOffset += sent;
+    std::cout << "sent total of " << sentBytes << " file offset is " <<  fileOffset << std::endl;
+    close(fd);
+    /*while (bytesTosend > 0)
     {
         readbytes = read(fd, buffer, BUFF);
         if (readbytes == -1)
@@ -126,17 +164,17 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
             std::cout << "read fail" << std::endl;
             break;
         }
-        //dprintf(cfd, "%zx\r\n", readbytes);
+        dprintf(cfd, "%zx\r\n", readbytes);
         total += send(cfd, buffer, readbytes, MSG_NOSIGNAL);
         std::cout << "sent total of " << total << std::endl;
-        //write(cfd, "\r\n", 2);
+        write(cfd, "\r\n", 2);
         bytesTosend -= readbytes;
     }
-    //write(cfd, "0\r\n\r\n", 5);
+    write(cfd, "0\r\n\r\n", 5);
     std::cout << "remaining bytes to send " << bytesTosend << std::endl;
     std::cout << "total sent bytes " << total << std::endl;
     close (fd);
-    //close (cfd);
+    //close (cfd);*/
 }
 
 void GetResponse::handleErrorPage(const char *path, int cfd)
@@ -177,7 +215,6 @@ bool GetResponse::isAlive() const
 {
     return true;
 }
-
 
 GetResponse::~GetResponse()
 {
