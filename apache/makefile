@@ -1,5 +1,5 @@
 NAME := apache
-CC := c++
+CC := g++
 CFLAGS := -Wall -Wextra -Werror -std=c++98 -pedantic
 
 SRCS := utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \

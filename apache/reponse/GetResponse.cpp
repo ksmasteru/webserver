@@ -7,6 +7,8 @@ GetResponse::GetResponse()
 {
     fileOffset = 0;
     sentBytes = 0;
+    chunked = false;
+    this->state = sendingheader;
 }
 
 GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
@@ -59,7 +61,9 @@ std::string GetResponse::RspHeader(unsigned int cLength, unsigned int code)
 {
     std::string alive = "keep-alive"; // will be set later;
     std::ostringstream header;
-    header  << RspStatusline(code)
+    if (!chunked)
+    {
+        header  << RspStatusline(code)
             << "Date: " + getTime() + " \r\n"
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
@@ -67,6 +71,16 @@ std::string GetResponse::RspHeader(unsigned int cLength, unsigned int code)
             << "Content-Length: " + intToString(cLength) + " \r\n"
             << "Connection: " + alive + " \r\n"
             << "\r\n";
+    }
+    else
+    {
+            header  << RspStatusline(code)
+            << "Date: " + getTime() + " \r\n"
+            << "Server: apache/2.4.41 (Ubuntu) \r\n"
+            << "Transfer-Encoding: chunked \r\n"
+            << "Connection: " + alive + " \r\n"
+            << "\r\n";
+    }
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
     return (head_msg);
@@ -101,17 +115,18 @@ void GetResponse::sendHeader(const char *path, int cfd, bool redirection)
     else
         this->res_data.extension = (extension_pos != std::string::npos) ? this->_request->getRequestPath().substr(extension_pos+1) : "";
     this->res_data.contentType = content(this->res_data.extension);
-    std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
+    //std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
     struct stat st;
     stat(path ,&st);
     this->res_data.clength = st.st_size;
-    std::cout << "content length is " << this->res_data.clength << std::endl;
+    //std::cout << "content length is " << this->res_data.clength << std::endl;
     std::string header = RspHeader(this->res_data.clength, this->res_data.status);
     int sent = send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL);
     // header is guaranted to be less than buffer size.
     if (sent == -1)
         throw ("sending heade error");
     sentBytes += sent;
+    std::cout << "sent " << sent << std::endl;
     // setting new stat for the response
     this->state = sendingBody;
 }
@@ -122,6 +137,15 @@ void GetResponse::getFileReady(int fd)
     if (new_offset == -1)
         throw ("bad file seek");
 }
+void GetResponse::sendChunkHeader (int cfd, int readBytes)
+{
+    std::stringstream ss;
+    ss << std::hex << readBytes << "\r\n";  // Convert to hexadecimal
+    std::string hexStr = ss.str();
+    std::cout << "chunked header " << hexStr << "size of header" << hexStr.length() <<std::endl;
+    if (send(cfd, hexStr.c_str(), hexStr.length(), 0) == -1)
+        throw ("bad send");
+}
 
 void GetResponse::sendPage(const char *path, int cfd, bool redirection)
 {
@@ -129,8 +153,12 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
     // this way you dont have to lseek or multiple open close.
     // you only close after timeout or response all sent.
     sentBytes = 0;
+    chunked = true;
     if (this->getState() == sendingheader)
+    {
+        std::cout << "sending header" << std::endl;
         sendHeader(path, cfd, redirection);
+    }
     int R_BUFF = BUFFER_SIZE - sentBytes;
     if (R_BUFF < 2)
         throw ("too long of a header?");
@@ -138,43 +166,29 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
     if (fd == -1)
         throw ("couldnt open file");
     char* buffer[R_BUFF];
-    int bytesTosend = this->res_data.clength;
-    // set the file cursor to the last offset.
+    getFileReady(fd);
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
         throw ("read fail");
-    getFileReady(fd);
+    if (chunked)
+        sendChunkHeader(cfd, readbytes);
     int sent = send(cfd,  buffer, readbytes, 0);
-    // if sent is lesser thn readbytes it means this is the last send.
     if (sent == -1)
     {
         close (fd);
-        throw ("send fail"); // if sending fail --> handle this.
+        throw ("send fail");
     }
-    if (sent < readbytes || readbytes == 0) // here you should reset the request
-        this->state = done;
     fileOffset += sent;
-    std::cout << "sent total of " << sentBytes << " file offset is " <<  fileOffset << std::endl;
-    close(fd);
-    /*while (bytesTosend > 0)
+    if (chunked)
+        send(cfd, "\r\n", 2, 0); 
+    if (readbytes < R_BUFF || readbytes == 0)
     {
-        readbytes = read(fd, buffer, BUFF);
-        if (readbytes == -1)
-        {
-            std::cout << "read fail" << std::endl;
-            break;
-        }
-        dprintf(cfd, "%zx\r\n", readbytes);
-        total += send(cfd, buffer, readbytes, MSG_NOSIGNAL);
-        std::cout << "sent total of " << total << std::endl;
-        write(cfd, "\r\n", 2);
-        bytesTosend -= readbytes;
+        this->state = done;
+        if (chunked)
+            send(cfd, "0\r\n\r\n", 5, 0);
     }
-    write(cfd, "0\r\n\r\n", 5);
-    std::cout << "remaining bytes to send " << bytesTosend << std::endl;
-    std::cout << "total sent bytes " << total << std::endl;
-    close (fd);
-    //close (cfd);*/
+    std::cout << "sen " << sent << " file offset is " <<  fileOffset << std::endl;
+    close(fd);
 }
 
 void GetResponse::handleErrorPage(const char *path, int cfd)
@@ -192,9 +206,11 @@ void GetResponse::handleErrorPage(const char *path, int cfd)
 }
 
 // send repsonse and close cfd
-void GetResponse::makeResponse(int cfd)
+void GetResponse::makeResponse(int cfd, Request* req)
 {
-    std::string path = "pages" + this->_request->getRequestPath();
+    this->_request = req;
+    std::cout << "make response called" << std::endl;
+    std::string path = "pages" + req->getRequestPath();
     this->res_data.status = 200;
     if (path.compare("pages/") == 0)
     {

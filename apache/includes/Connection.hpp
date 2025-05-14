@@ -22,5 +22,5 @@ class Connection{
         }
         void resetConnection(){
         }
-        ~Connection();
+        ~Connection(){}
 };

@@ -50,7 +50,7 @@ void Server::addNewClient()
     if (setsockopt(data.sfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
         throw std::runtime_error("setsockopt failed");
     struct epoll_event event;
-    event.events = EPOLLIN | EPOLLHUP | EPOLLERR; 
+    event.events = EPOLLIN | EPOLLOUT | EPOLLERR; 
     event.data.fd = client_fd;
     if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
         throw ("epoll_ctl fail");
@@ -62,6 +62,7 @@ void Server::addNewClient()
 
 void Server::handleReadEvent(int fd)
 {
+    std::cout << "new read event for fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client of fd: " << fd << " was not found" << std::endl;
@@ -72,6 +73,7 @@ void Server::handleReadEvent(int fd)
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
         throw ("recv failed");
+    std::cout << "Reead bytes are " << readBytes << std::endl;
     switch (clients[fd]->request.getState())
     {
         case ReadingRequestHeader:
@@ -84,14 +86,15 @@ void Server::handleReadEvent(int fd)
             std::cout << "waiting for the response to finish" << std::endl;
             break;
     }
-    // if the user sends a new reques and he previous request wasnt answered but this request
-    // on hold until the queued request is ansewred.
+    if (clients[fd]->request.getState() == Done)
+        std::cout << "read event handled successfuly for target url " << clients[fd]->request.getRequestPath() << std::endl;
 }
 
 void Server::handleWriteEvent(int fd)
 {
     // writing to client of fd.
     // minium write operation should cover the header.
+    std::cout << "received a write event on client of fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client not found " << std::endl;
@@ -106,11 +109,16 @@ void Server::handleWriteEvent(int fd)
     // too big of a file : state -> sending body :
     // attributees of response .
     // handling get first.
-    clients[fd]->response.makeResponse(fd);
-    if (clients[fd]->response.getState() == Done) //  the last reponse completed  the file
+    clients[fd]->response.makeResponse(fd, &clients[fd]->request);
+    if (clients[fd]->response.getState() == Done /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
     {
-        clients[fd]->request.reset();
-        clients[fd]->response.reset();
+        //std::cout << "client is still alive ..." << std::endl;
+        //clients[fd]->request.reset();
+        //clients[fd]->response.reset();
+        std::cout << "deleting connection ..." << std::endl;
+        close(fd);
+        delete clients[fd];
+        clients.erase(fd);
     }
 }
 int Server::run()
@@ -119,17 +127,22 @@ int Server::run()
     while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
-        std::cout << "num events is " << num_events << std::endl;
+        //std::cout << "num events is " << num_events << std::endl;
         if (num_events == -1)
             return EXIT_FAILURE;
         for (int i = 0; i < num_events; i++)
         {
             if (data.events[i].data.fd == data.sfd)
+            {
+                std::cout << "server socket" << std::endl;
                 addNewClient();
-            else if (data.events[i].data.fd & EPOLLIN) /* data can be read */
+                continue;
+            }
+            else if (data.events[i].events & EPOLLIN) /* data can be read */
                 handleReadEvent(data.events[i].data.fd);
-            else if (data.events[i].data.fd & EPOLLOUT) /* data can be sent*/
+            if (data.events[i].events & EPOLLOUT)
                 handleWriteEvent(data.events[i].data.fd);
+            // here you should add the exist code
         }
     }
     close(data.sfd);

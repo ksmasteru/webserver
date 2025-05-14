@@ -38,8 +38,8 @@ class  Request{ // read event.
     std::string type;
     std::string qkey;
     std::string qvalue;
-    mainState mainState;
-    subState subState;
+    mainState MainState;
+    subState SubState;
     char        httpGreater;
     char        httpMinor;
     int totalReadBytes;
@@ -72,13 +72,13 @@ class  Request{ // read event.
         type.clear();
         qkey.clear();
         qvalue.clear();
-        mainState = ReadingRequestHeader;
-        subState = start;
+        MainState = ReadingRequestHeader;
+        SubState = start;
         totalReadBytes = 0;
         _bytesread = 0;
     }
     int getState(){
-        return this->mainState;
+        return this->MainState;
     }
     ~Request(){}
 };

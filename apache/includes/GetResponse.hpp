@@ -13,12 +13,13 @@ class GetResponse : public AResponse
         int sentBytes;
         int fileOffset;
         ResponseState state;
+        bool    chunked;
     public:
 
         GetResponse(const std::string& type, Request *req, std::map<std::string, std::string>* status, int client_fd);
         GetResponse();
         virtual ~GetResponse();
-        void  makeResponse(int cfd);
+        void  makeResponse(int cfd, Request*);
         void    getFileReady(int fd);
         std::string getTime();
         std::string makeRspHeader();
@@ -31,6 +32,7 @@ class GetResponse : public AResponse
         const char* getRes() const;
         size_t  getSize();
         bool isAlive() const;
+        void sendChunkHeader (int, int);
         int getState(){return this->state;}
         void setState(ResponseState st){
             state = st;
