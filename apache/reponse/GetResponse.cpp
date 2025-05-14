@@ -7,6 +7,7 @@ GetResponse::GetResponse()
 {
     fileOffset = 0;
     sentBytes = 0;
+    openfile = false;
     chunked = false;
     this->state = sendingheader;
 }
@@ -77,6 +78,7 @@ std::string GetResponse::RspHeader(unsigned int cLength, unsigned int code)
             header  << RspStatusline(code)
             << "Date: " + getTime() + " \r\n"
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
+            << "Content-Type: " + this->res_data.contentType + " \r\n"
             << "Transfer-Encoding: chunked \r\n"
             << "Connection: " + alive + " \r\n"
             << "\r\n";
@@ -147,6 +149,16 @@ void GetResponse::sendChunkHeader (int cfd, int readBytes)
         throw ("bad send");
 }
 
+int GetResponse::getFd(const char *path)
+{
+     if (openfile)
+        return fd;
+    this->fd = open(path, O_RDONLY);
+    if (this->fd == -1)
+        throw ("couldnt open file");
+    openfile = true;
+    return this->fd;
+}
 void GetResponse::sendPage(const char *path, int cfd, bool redirection)
 {
     // you could at the start open the file and keep it open
@@ -162,11 +174,9 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
     int R_BUFF = BUFFER_SIZE - sentBytes;
     if (R_BUFF < 2)
         throw ("too long of a header?");
-    int fd =  open(path, O_RDONLY);
-    if (fd == -1)
-        throw ("couldnt open file");
+    int fd = getFd(path);
     char* buffer[R_BUFF];
-    getFileReady(fd);
+    //getFileReady(fd);
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
         throw ("read fail");
@@ -188,7 +198,6 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
             send(cfd, "0\r\n\r\n", 5, 0);
     }
     std::cout << "sen " << sent << " file offset is " <<  fileOffset << std::endl;
-    close(fd);
 }
 
 void GetResponse::handleErrorPage(const char *path, int cfd)

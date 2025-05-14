@@ -14,6 +14,8 @@ class GetResponse : public AResponse
         int fileOffset;
         ResponseState state;
         bool    chunked;
+        bool    openfile;
+        int fd;
     public:
 
         GetResponse(const std::string& type, Request *req, std::map<std::string, std::string>* status, int client_fd);
@@ -31,6 +33,7 @@ class GetResponse : public AResponse
         void    handleErrorPage(const char *path, int cfd);
         const char* getRes() const;
         size_t  getSize();
+        int getFd(const char *);
         bool isAlive() const;
         void sendChunkHeader (int, int);
         int getState(){return this->state;}
@@ -43,5 +46,6 @@ class GetResponse : public AResponse
             sentBytes = 0;
             fileOffset = 0;
             state = sendingheader;
+            openfile = false;
         }
 };
