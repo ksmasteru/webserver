@@ -62,7 +62,7 @@ void Server::addNewClient()
 
 void Server::handleReadEvent(int fd)
 {
-    std::cout << "new read event for fd " << fd << std::endl;
+    //std::cout << "new read event for fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client of fd: " << fd << " was not found" << std::endl;
@@ -73,14 +73,14 @@ void Server::handleReadEvent(int fd)
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
         throw ("recv failed");
-    std::cout << "Reead bytes are " << readBytes << std::endl;
+    //std::cout << "Reead bytes are " << readBytes << std::endl;
     switch (clients[fd]->request.getState())
     {
         case ReadingRequestHeader:
             clients[fd]->request.parseRequestHeader(buffer, readBytes);
             break;
         case ReadingRequestBody:
-            clients[fd]->request.parseRequestBody(buffer, readBytes);
+            clients[fd]->request.parseRequestBody(buffer, 0,readBytes);
             break;
         default:
             std::cout << "waiting for the response to finish" << std::endl;
@@ -109,8 +109,11 @@ void Server::handleWriteEvent(int fd)
     // too big of a file : state -> sending body :
     // attributees of response .
     // handling get first.
-    clients[fd]->response.makeResponse(fd, &clients[fd]->request);
-    if (clients[fd]->response.getState() == Done /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
+    if (clients[fd]->request.getType().compare("GET") == 0)
+        clients[fd]->response.makeResponse(fd, &clients[fd]->request);
+    else if (clients[fd]->request.getType().compare("POST") == 0)
+        clients[fd]->response.successPostResponse(fd);
+    if (clients[fd]->response.getState() == ResponseDone /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
     {
         //std::cout << "client is still alive ..." << std::endl;
         //clients[fd]->request.reset();

@@ -5,7 +5,7 @@
 enum  ResponseState{
     sendingheader,
     sendingBody,
-    done
+    ResponseDone
 };
 class GetResponse : public AResponse
 {
@@ -36,6 +36,7 @@ class GetResponse : public AResponse
         int getFd(const char *);
         bool isAlive() const;
         void sendChunkHeader (int, int);
+        void successPostResponse(int);
         int getState(){return this->state;}
         void setState(ResponseState st){
             state = st;

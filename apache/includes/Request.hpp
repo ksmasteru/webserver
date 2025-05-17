@@ -3,6 +3,7 @@
 #include <map>
 #pragma once
 #include <iostream>
+#include <fcntl.h>
 
 enum mainState{
     ReadingRequestHeader,
@@ -30,13 +31,18 @@ enum subState{
         val,
         CR,
         LF,
+        parsingBody,
         doneParsing
+};
+enum requestBodyState{
+        
 };
 
 class  Request{ // read event.
     std::string RawRequest;
     std::string type;
     std::string qkey;
+    bool openPostfd;
     std::string qvalue;
     mainState MainState;
     subState SubState;
@@ -45,6 +51,7 @@ class  Request{ // read event.
     int totalReadBytes;
     int _bytesread;
     bool keep_alive;
+    int Postfd;
     std::string targetUri;
     std::map<std::string, std::string> queries;
     std::map<std::string, std::string> headers;
@@ -60,7 +67,7 @@ class  Request{ // read event.
     const std::string& getType() const;
     void parseRequestHeader(char* request, int readBytes);
     void parseRequestLine(char *request, int readBytes, int &offset);
-    void parseRequestBody(char *request, int ReadBytes);
+    void parseRequestBody(char *request, int offset, int readBytes);
     std::string getMapAtIndex(unsigned int index);
     void printRequestLine();
     void printHeaderFields();
@@ -80,5 +87,9 @@ class  Request{ // read event.
     int getState(){
         return this->MainState;
     }
+    void    contentLengthBody(char *request, int offset, int readBytes);
+    void    chunkedBody(char *request, int offset, int readBytes);
+    int     getPostFd();
+    std::string getExtension();
     ~Request(){}
 };

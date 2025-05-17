@@ -27,3 +27,14 @@ he sends it in the header.
 
 
 // check the new request class.
+!!
+A server that receives a request message with a
+ transfer coding it does not understand SHOULD respond with 501 (Not Implemented).
+
+ If a valid Content-Length header field is present without Transfer-Encoding, 
+ its decimal value defines the expected message body length in octets. 
+ If the sender closes the connection or the recipient
+  times out before the indicated number of octets are received,
+   the recipient MUST consider the message to be incomplete and close the connection.
+
+   

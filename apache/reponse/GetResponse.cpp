@@ -19,7 +19,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
     // shalow copy of request.
 }
 
-// response header should be last to get filled.
+// response header should be lsat to get filled.
 
 std::string GetResponse::RspStatusline(unsigned int code)
 { 
@@ -186,6 +186,7 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
     if (sent == -1)
     {
         close (fd);
+        openfile = false;
         throw ("send fail");
     }
     fileOffset += sent;
@@ -193,7 +194,7 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
         send(cfd, "\r\n", 2, 0); 
     if (readbytes < R_BUFF || readbytes == 0)
     {
-        this->state = done;
+        this->state = ResponseDone;
         if (chunked)
             send(cfd, "0\r\n\r\n", 5, 0);
     }
@@ -214,7 +215,7 @@ void GetResponse::handleErrorPage(const char *path, int cfd)
     }
 }
 
-// send repsonse and close cfd
+// send repsonse and close cfd for GET!!!.
 void GetResponse::makeResponse(int cfd, Request* req)
 {
     this->_request = req;
@@ -229,7 +230,19 @@ void GetResponse::makeResponse(int cfd, Request* req)
     else if (access(path.c_str(),R_OK) == 0)
         return (sendPage(path.c_str(), cfd, false));
     else
-        return (handleErrorPage(path.c_str(), cfd));    
+        return (handleErrorPage(path.c_str(), cfd));
+}
+
+// header of a successful post response.
+void GetResponse::successPostResponse(int cfd)
+{
+    std::ostringstream ofs;
+    ofs << "HTTP/1.1 201 Created"
+        << "Connection: Close";
+    std::string header = ofs.str();
+    if (send(cfd, header.c_str(), header.length(), 0) == -1)
+        throw ("error sending post Response");
+    this->state = ResponseDone;
 }
 const char* GetResponse::getRes() const
 {

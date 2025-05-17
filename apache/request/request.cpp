@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 #include <cstring>
+#include "../includes/webserver.hpp"
 
 bool isGetRequest(char *str)
 {
@@ -47,6 +48,7 @@ Request::Request()
 {
     MainState = ReadingRequestHeader;
     SubState = start;
+    openPostfd = false;
 }
 
 /*const std::map<int, std::string>&   Request::getMap() const{
@@ -143,13 +145,19 @@ void Request::parseRequestHeader(char* request, int readBytes)
                 {
                     throw ("bad CR case\n");
                 }
-            case LF:
+            case LF:/*code changed here*/
                 if (c != '\n')
                     throw ("no new line\n");
-                this->SubState = name;
+                if(fieldname.empty()) /*it skiped form name to here.*/
+                {
+                    // in this case we move to body parsing.
+                    this->MainState = ReadingRequestBody;
+                    return (parseRequestBody(request,offset,readBytes));
+                }
                 headers[fieldname] = fieldvalue;
                 fieldvalue.clear();
                 fieldname.clear();
+                this->SubState = name;
                 break;
             default:
                 std::cout << "bad value for request line" << std::endl;
@@ -385,12 +393,101 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
     }
 }
 
-void Request::parseRequestBody(char *request, int readBytes)
+void Request::parseRequestBody(char *request, int offset, int readBytes)
 {
-    // TO DO when handling post request.
-    std::cout << "say hi" << std::endl;
+    std::cout << "parseRequestBody called" << std::endl;
+    char c;
+    enum transfer{
+        NONE,
+        content_Length,
+        chunked
+    };
+    // if request type is not post ignore
+    if (this->getType().compare("POST") != 0)
+    {
+        this->MainState = Done;
+        this->SubState = doneParsing;
+        return ;
+    }
+    // first test if there is actually some encoding.
+    transfer _transfer = NONE;
+    if (headers.find("Content-Length") != headers.end())
+        _transfer = content_Length;
+    else if ((headers.find("Transfer-Enconding") != headers.end())
+        && (headers["Transfer-Encoding"] == "Chunked"))
+        _transfer = chunked;
+    if (offset == readBytes && _transfer == NONE)
+        this->SubState = doneParsing;
+    if (_transfer == NONE)
+        throw ("Bad Post Request format");
+    if (_transfer == content_Length)
+        return (contentLengthBody(request, offset, readBytes));
+    return  (chunkedBody(request, offset, readBytes));
 }
 
+void Request::chunkedBody(char *request, int offset, int readBytes)
+{
+    std::cout << "TODO chunkedBody" << std::endl;
+}
+
+void Request::contentLengthBody(char *request, int offset, int readBytes)
+{
+    std::cout << "contentLengthBody called with offset " << offset << std::endl;
+    int fd;
+    if (openPostfd)
+        fd = Postfd;
+    else
+        fd = getPostFd();
+    // write the whole read length.
+    int writtenBytes = write(fd, request + offset,readBytes - offset);
+    if (offset == 0 && readBytes < BUFFER_SIZE)
+    {
+        std::cout << "all data has been writen." << std::endl;
+        this->MainState = Done;
+        close(Postfd);
+    }
+}
+
+/*generate a unique fd for post request*/
+// Content-Type: text/html; charset=utf-8
+std::string Request::getExtension()
+{
+    std::string extension = ".bin";
+    if (headers.find("Content-Type") != headers.end())
+        extension = headers["Content-type"];
+    else
+        return extension;
+    std::map<std::string, std::string> contentMap = {
+    {"text/html", ".html"},
+    {"image/png", ".ico"},
+    {"text/css", ".css"},
+    {"application/javascript", ".js"},
+    {"application/json", ".json"},
+    {"image/jpg", ".jpg"},
+    {"image/jpeg", ".jpeg"},
+    {"image/gif", ".gif"},
+    {"image/svg+xml", ".svg"},
+    {"text/plain", ".txt"},
+    {"video/mp4", ".mp4"},
+    {"", ".bin"}
+    };
+    return contentMap[extension];
+}
+
+int Request::getPostFd()
+{
+    // generate a unique name.
+    std::string fileName = generateUniqueFilename();
+    //std::string extension = getExtension(); 
+    fileName += getExtension();
+
+    std::cout << "filename for upload ist " << fileName << std::endl;
+    this->Postfd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if (this->Postfd == -1)
+        throw ("couldnt open post fd");
+    this->openPostfd = true;
+    return this->Postfd;
+}
 // to avoid copying the map each time. 
 std::string Request::getMapAtIndex(unsigned int index)
 {
