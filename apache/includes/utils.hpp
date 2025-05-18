@@ -1,6 +1,6 @@
 #pragma once
 
-#define UPLOAD_DIRECTORY "/uploads"
+#define UPLOAD_DIRECTORY "uploads/"
 
 #include <string>
 #include <sstream>

@@ -237,11 +237,13 @@ void GetResponse::makeResponse(int cfd, Request* req)
 void GetResponse::successPostResponse(int cfd)
 {
     std::ostringstream ofs;
-    ofs << "HTTP/1.1 201 Created"
-        << "Connection: Close";
+    ofs << "HTTP/1.1 201 Created \r\n"
+        << "Connection: Close \r\n"
+        << "\r\n";
     std::string header = ofs.str();
     if (send(cfd, header.c_str(), header.length(), 0) == -1)
         throw ("error sending post Response");
+    std::cout << "sent post response" << header <<std::endl;
     this->state = ResponseDone;
 }
 const char* GetResponse::getRes() const

@@ -51,7 +51,12 @@ class  Request{ // read event.
     int totalReadBytes;
     int _bytesread;
     bool keep_alive;
+
+    // post request
     int Postfd;
+    int writtenData;
+    int totLent;
+
     std::string targetUri;
     std::map<std::string, std::string> queries;
     std::map<std::string, std::string> headers;

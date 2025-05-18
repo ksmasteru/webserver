@@ -49,6 +49,8 @@ Request::Request()
     MainState = ReadingRequestHeader;
     SubState = start;
     openPostfd = false;
+    writtenData = 0;
+    totLent = 0;
 }
 
 /*const std::map<int, std::string>&   Request::getMap() const{
@@ -96,6 +98,7 @@ void Request::parseRequestHeader(char* request, int readBytes)
     if (this->SubState < name)
         parseRequestLine(request, readBytes, offset); // increment offset;
     std::cout << "after parsing request line offset is "<< offset << " susbstate " << SubState << std::endl;
+    std::cout << "now parsing from " << request + offset << std::endl;
     for (; offset < _bytesread; offset++)
     {
         c = request[offset];
@@ -103,7 +106,10 @@ void Request::parseRequestHeader(char* request, int readBytes)
         {
             case name:
                 if (c == '\r' || c == '\n')
+                {
+                    this->SubState = LF;
                     break;
+                }
                 if (isspace(c))
                     throw("bad request field name");
                 if (c == ':')
@@ -434,18 +440,27 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
 {
     std::cout << "contentLengthBody called with offset " << offset << std::endl;
     int fd;
+    // make a function that does this at the first time and only once.
     if (openPostfd)
         fd = Postfd;
     else
+    {
+        this->totLent = stringToInt(headers["Content-Length"]);
+        std::cout << "tot length is " << this->totLent << std::endl;
         fd = getPostFd();
+    }
     // write the whole read length.
-    int writtenBytes = write(fd, request + offset,readBytes - offset);
-    if (offset == 0 && readBytes < BUFFER_SIZE)
+    // need a better way to determine write finish.
+    writtenData += write(fd, request + offset,readBytes - offset);
+    if (writtenData >= this->totLent)
     {
         std::cout << "all data has been writen." << std::endl;
         this->MainState = Done;
         close(Postfd);
+        // !!! we write more than assked prolly becase we dont skip the line after 
+        // request header
     }
+
 }
 
 /*generate a unique fd for post request*/
@@ -454,7 +469,7 @@ std::string Request::getExtension()
 {
     std::string extension = ".bin";
     if (headers.find("Content-Type") != headers.end())
-        extension = headers["Content-type"];
+        extension = headers["Content-Type"];
     else
         return extension;
     std::map<std::string, std::string> contentMap = {
@@ -480,11 +495,17 @@ int Request::getPostFd()
     std::string fileName = generateUniqueFilename();
     //std::string extension = getExtension(); 
     fileName += getExtension();
-
     std::cout << "filename for upload ist " << fileName << std::endl;
+    try {
     this->Postfd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (this->Postfd == -1)
         throw ("couldnt open post fd");
+    }
+    catch (const char* msg)
+    {
+        std::cout << msg << std::endl;
+        exit(1);
+    }
     this->openPostfd = true;
     return this->Postfd;
 }

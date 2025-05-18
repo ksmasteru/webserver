@@ -77,10 +77,24 @@ void Server::handleReadEvent(int fd)
     switch (clients[fd]->request.getState())
     {
         case ReadingRequestHeader:
+            try {
             clients[fd]->request.parseRequestHeader(buffer, readBytes);
+            }
+            catch (const char *msg)
+            {
+                std::cout << msg << std::endl;
+                exit(1);
+            }
             break;
         case ReadingRequestBody:
+            try {
             clients[fd]->request.parseRequestBody(buffer, 0,readBytes);
+            }
+            catch (const char *msg)
+            {
+                std::cout << msg << std::endl;
+                exit(1);
+            }
             break;
         default:
             std::cout << "waiting for the response to finish" << std::endl;
