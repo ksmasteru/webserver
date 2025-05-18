@@ -49,7 +49,7 @@ Request::Request()
     MainState = ReadingRequestHeader;
     SubState = start;
     openPostfd = false;
-    writtenData = 0;
+    openRequestFile = false;
     totLent = 0;
 }
 
@@ -154,10 +154,11 @@ void Request::parseRequestHeader(char* request, int readBytes)
             case LF:/*code changed here*/
                 if (c != '\n')
                     throw ("no new line\n");
-                if(fieldname.empty()) /*it skiped form name to here.*/
+                if(fieldname.empty()) /*it skiped from name to here.*/
                 {
                     // in this case we move to body parsing.
                     this->MainState = ReadingRequestBody;
+                    offset++;
                     return (parseRequestBody(request,offset,readBytes));
                 }
                 headers[fieldname] = fieldvalue;
@@ -398,16 +399,42 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
             }
     }
 }
-
+void Request::setUpPostFile()
+{
+    std::string fileName = generateUniqueFilename();
+    //std::string extension = getExtension(); 
+    fileName += getExtension();
+    std::cout << "filename for upload ist " << fileName << std::endl;
+    try {
+        this->RequestFile.fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
+        if (this->RequestFile.fd == -1)/*should throw an error : stop request.*/
+            throw ("couldnt open post fd");
+    }
+    catch (const char* msg)
+    {
+        std::cout << msg << std::endl;
+        exit(1);
+    }
+    this->RequestFile.offset = 0;
+    // setting up transfer type
+    if (headers.find("Content-Length") != headers.end())
+        this->RequestFile.type = Content_Length;
+    else if ((headers.find("Transfer-Enconding") != headers.end())
+        && (headers["Transfer-Encoding"] == "Chunked"))
+        this->RequestFile.type = Chunked;
+    else
+        throw ("Bad Request"); /*RFC 7230*/
+    // determine file size based on transfer.
+    if (this->RequestFile.type == Content_Length)
+        this->RequestFile.size = stringToLong(headers["Content-Length"]);
+    else
+        this->RequestFile.size = 0;
+    this->openRequestFile = true;
+}
+/* this handles the post request Body : uploads the file to server.*/
 void Request::parseRequestBody(char *request, int offset, int readBytes)
 {
     std::cout << "parseRequestBody called" << std::endl;
-    char c;
-    enum transfer{
-        NONE,
-        content_Length,
-        chunked
-    };
     // if request type is not post ignore
     if (this->getType().compare("POST") != 0)
     {
@@ -415,20 +442,20 @@ void Request::parseRequestBody(char *request, int offset, int readBytes)
         this->SubState = doneParsing;
         return ;
     }
-    // first test if there is actually some encoding.
-    transfer _transfer = NONE;
-    if (headers.find("Content-Length") != headers.end())
-        _transfer = content_Length;
-    else if ((headers.find("Transfer-Enconding") != headers.end())
-        && (headers["Transfer-Encoding"] == "Chunked"))
-        _transfer = chunked;
-    if (offset == readBytes && _transfer == NONE)
-        this->SubState = doneParsing;
-    if (_transfer == NONE)
-        throw ("Bad Post Request format");
-    if (_transfer == content_Length)
-        return (contentLengthBody(request, offset, readBytes));
-    return  (chunkedBody(request, offset, readBytes));
+    // BELW CODE ONLY HANDLES POST.
+    if (!openRequestFile)
+        setUpPostFile();
+    switch(this->RequestFile.type)
+    {
+        case Content_Length:
+            contentLengthBody(request, offset, readBytes);
+            break;
+        case Chunked:
+            chunkedBody(request, offset, readBytes);
+            break;
+        default:
+            break;
+    }
 }
 
 void Request::chunkedBody(char *request, int offset, int readBytes)
@@ -438,29 +465,16 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
 
 void Request::contentLengthBody(char *request, int offset, int readBytes)
 {
-    std::cout << "contentLengthBody called with offset " << offset << std::endl;
-    int fd;
-    // make a function that does this at the first time and only once.
-    if (openPostfd)
-        fd = Postfd;
-    else
+    int writtenData = write(this->RequestFile.fd, request + offset,readBytes - offset);
+    if (writtenData != readBytes - offset)
+        throw ("partial/failed write : internal server error");
+    this->RequestFile.offset += writtenData;
+    // checck if done.
+    if (this->RequestFile.offset == this->RequestFile.size)
     {
-        this->totLent = stringToInt(headers["Content-Length"]);
-        std::cout << "tot length is " << this->totLent << std::endl;
-        fd = getPostFd();
-    }
-    // write the whole read length.
-    // need a better way to determine write finish.
-    writtenData += write(fd, request + offset,readBytes - offset);
-    if (writtenData >= this->totLent)
-    {
-        std::cout << "all data has been writen." << std::endl;
+        std::cout << "File received completly" << std::endl;
         this->MainState = Done;
-        close(Postfd);
-        // !!! we write more than assked prolly becase we dont skip the line after 
-        // request header
     }
-
 }
 
 /*generate a unique fd for post request*/

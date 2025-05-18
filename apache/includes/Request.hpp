@@ -4,6 +4,7 @@
 #pragma once
 #include <iostream>
 #include <fcntl.h>
+#include "../includes/utils.hpp"
 
 enum mainState{
     ReadingRequestHeader,
@@ -34,14 +35,26 @@ enum subState{
         parsingBody,
         doneParsing
 };
-enum requestBodyState{
-        
+
+enum Transfer_Type{
+    NONE,
+    Content_Length,
+    Chunked
 };
+
+typedef struct s_FILE{
+    int fd;
+    unsigned long offset;
+    Transfer_Type type;
+    unsigned long size;
+}t_FILE;
 
 class  Request{ // read event.
     std::string RawRequest;
     std::string type;
     std::string qkey;
+    t_FILE  RequestFile;
+    bool openRequestFile;
     bool openPostfd;
     std::string qvalue;
     mainState MainState;
@@ -54,7 +67,6 @@ class  Request{ // read event.
 
     // post request
     int Postfd;
-    int writtenData;
     int totLent;
 
     std::string targetUri;
@@ -66,6 +78,7 @@ class  Request{ // read event.
     public:
     Request();
     std::string getHttpVersion();
+    void    setUpPostFile();
     void addtoheaders(std::string& key, std::string& val);
     std::string getRequestPath();
     const std::string& getRawRequest() const;
@@ -88,6 +101,7 @@ class  Request{ // read event.
         SubState = start;
         totalReadBytes = 0;
         _bytesread = 0;
+        openRequestFile = false;
     }
     int getState(){
         return this->MainState;

@@ -1,2 +1,4 @@
-parse post request header.
+for post : opening an objeect only happens the first time.
 
+// let's have a file struct : fd, name, size, transfer type, bytes"sent oder received"
+// and a bool thatcheck if it is open.
