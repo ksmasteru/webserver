@@ -6,6 +6,27 @@
 #include <fcntl.h>
 #include "../includes/utils.hpp"
 
+enum Chunk_State{
+    chunk_size,
+    CR1,
+    LF1,
+    chunk_data,
+    CR2,
+    write_chunk, // next time you write credit.
+    CR3,
+    LF3,
+    chunk_done
+};
+
+    /*
+        7\r\n
+        Mozilla\r\n
+        11\r\n
+        Developer Network\r\n
+        0\r\n
+        \r\n
+    */
+
 enum mainState{
     ReadingRequestHeader,
     ReadingRequestBody,
@@ -47,6 +68,8 @@ typedef struct s_FILE{
     unsigned long offset;
     Transfer_Type type;
     unsigned long size;
+    Chunk_State state;
+    std::string chunk_lent;
 }t_FILE;
 
 class  Request{ // read event.

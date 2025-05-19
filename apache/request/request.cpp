@@ -428,7 +428,10 @@ void Request::setUpPostFile()
     if (this->RequestFile.type == Content_Length)
         this->RequestFile.size = stringToLong(headers["Content-Length"]);
     else
+    {
         this->RequestFile.size = 0;
+        this->RequestFile.state = chunk_size;
+    }
     this->openRequestFile = true;
 }
 /* this handles the post request Body : uploads the file to server.*/
@@ -461,6 +464,92 @@ void Request::parseRequestBody(char *request, int offset, int readBytes)
 void Request::chunkedBody(char *request, int offset, int readBytes)
 {
     std::cout << "TODO chunkedBody" << std::endl;
+    if (!openRequestFile)
+        setUpPostFile();
+    // when sending it is no problem as  we send exactly one chunk at each send.
+    // last time state : -->
+    size_t start = 0;
+    size_t end = 0;
+    char c;
+
+    // hex numbers were not handled... : read exactly the number of bytes specified by the header.
+    for (;offset < readBytes; offset++)
+    {
+        c = request[offset];
+        switch (this->RequestFile.state)
+        {
+            case chunk_size: // check validty : doesnt get written;
+                if(c == '\r')
+                {
+                    this->RequestFile.state = CR1;
+                    break;
+                }
+                else if (c >= '0' && c <= '9')
+                {
+                    this->RequestFile.chunk_lent += c;
+                    break;
+                }
+                else
+                    throw ("bad chunked encoding");
+            case CR1:
+                if (c != '\n')
+                    throw ("bad chunked encoding missgin LF1");
+                if (this->RequestFile.chunk_lent.empty())
+                    throw ("bad chunked encoding empty size");
+                if (stringToLong(this->RequestFile.chunk_lent) == 0)
+                {
+                    this->RequestFile.state = CR3;
+                    break;
+                }
+                this->RequestFile.state = LF1;
+                break;
+            case LF1:
+                start = offset;
+                this->RequestFile.state = chunk_data;
+            case chunk_data:
+                if (c == '\r') /*error : the deliniter should be the bytes to read*/
+                {
+                    end = offset - 1;
+                    this->RequestFile.state = CR2;
+                }
+                else
+                    break;
+            case CR2:
+                if (c != '\n')
+                    throw ("bad chunked encoding missign CR2");
+                if ((end == start) || ((end - start) != stringToLong(this->RequestFile.chunk_lent)))
+                    throw ("bad chunked encoding : bad chunk size");
+                this->RequestFile.state = write_chunk;
+            case write_chunk:
+                size_t writtendata = write(this->RequestFile.fd, request + start, end - start);
+                //write(1, "has written\n", 12);
+                //write (1, request + start, end - start);
+                if (writtendata != end - start)
+                    throw ("partial/failed write"); // internal server error
+                start = 0;
+                end = 0;
+                this->RequestFile.state = chunk_size;
+                break;// handle general case after that handle edge case.
+            case CR3:
+                if (c != '\r')
+                    throw ("bad chunked econding missing CR3");
+                this->RequestFile.state = LF3;
+                break;
+            case LF3:
+                if (c != '\n')
+                    throw ("bad chunked encoding missing LF3");
+                this->RequestFile.state = chunk_done;
+                break;
+            case chunk_done: // if this was accessed it means there is still data read after last chunk
+                std::cout << "chunk transfer is done ignoring the remaining data" << std::endl;
+                this->MainState = Done;
+                close(this->RequestFile.fd);
+                break;
+        }
+    }
+    // for loop finishes and we have unwritten data --> write the data and change
+    // lent_accordignly.
+
 }
 
 void Request::contentLengthBody(char *request, int offset, int readBytes)
