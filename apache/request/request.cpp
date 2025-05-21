@@ -419,8 +419,8 @@ void Request::setUpPostFile()
     // setting up transfer type
     if (headers.find("Content-Length") != headers.end())
         this->RequestFile.type = Content_Length;
-    else if ((headers.find("Transfer-Enconding") != headers.end())
-        && (headers["Transfer-Encoding"] == "Chunked"))
+    else if ((headers.find("Transfer-Encoding") != headers.end())
+        && (headers["Transfer-Encoding"] == "chunked"))
         this->RequestFile.type = Chunked;
     else
         throw ("Bad Request"); /*RFC 7230*/
@@ -430,6 +430,7 @@ void Request::setUpPostFile()
     else
     {
         this->RequestFile.size = 0;
+        this->RequestFile.toWrite = 0;
         this->RequestFile.state = chunk_size;
     }
     this->openRequestFile = true;
@@ -461,21 +462,34 @@ void Request::parseRequestBody(char *request, int offset, int readBytes)
     }
 }
 
-void Request::chunkedBody(char *request, int offset, int readBytes)
+void Request::chunkedBody(char *request1, int offset, int readBytes)
 {
     std::cout << "TODO chunkedBody" << std::endl;
     if (!openRequestFile)
         setUpPostFile();
     // when sending it is no problem as  we send exactly one chunk at each send.
     // last time state : -->
+    // altering request
     size_t start = 0;
-    size_t end = 0;
+    std::ostringstream ofs;
+    ofs << "2\r\n"
+        << "hello\n\r\n"
+        << "8\r\n"
+        << "myFriend\r\n"
+        << "0\r\n"
+        << "\r\n";
+    std::string str = ofs.str();
+    const char *request = str.c_str();
+    readBytes = str.length();
+    std::cout << "readBytes sind " << readBytes << std::endl;
+    offset = 0;
     char c;
-
+    size_t writtendata = 0;
     // hex numbers were not handled... : read exactly the number of bytes specified by the header.
     for (;offset < readBytes; offset++)
     {
         c = request[offset];
+        start = offset;
         switch (this->RequestFile.state)
         {
             case chunk_size: // check validty : doesnt get written;
@@ -484,7 +498,7 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                     this->RequestFile.state = CR1;
                     break;
                 }
-                else if (c >= '0' && c <= '9')
+                else if ((c >= '0' && c <= '9') || ((c >= 'a') && (c <= 'f')) || ((c >= 'A') || (c <= 'Z')))
                 {
                     this->RequestFile.chunk_lent += c;
                     break;
@@ -496,8 +510,9 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                     throw ("bad chunked encoding missgin LF1");
                 if (this->RequestFile.chunk_lent.empty())
                     throw ("bad chunked encoding empty size");
-                if (stringToLong(this->RequestFile.chunk_lent) == 0)
+                if ((this->RequestFile.toWrite = hexStringToLong(this->RequestFile.chunk_lent)) == 0)
                 {
+                    std::cout << "chuck size is " << this->RequestFile.toWrite << std::endl;
                     this->RequestFile.state = CR3;
                     break;
                 }
@@ -507,29 +522,28 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                 start = offset;
                 this->RequestFile.state = chunk_data;
             case chunk_data:
-                if (c == '\r') /*error : the deliniter should be the bytes to read*/
+                // write exatly the given bytes we write the minimal value of both either remaing or toWrite.
+                if (this->RequestFile.toWrite != 0)
                 {
-                    end = offset - 1;
-                    this->RequestFile.state = CR2;
+                    //std::cout << "to write bytes ist " << this->RequestFile.toWrite << std::endl;
+                    writtendata = std::min(readBytes - start, this->RequestFile.toWrite);
+                    //std::cout << "available space to write ist " << writtendata << std::endl;
+                    this->RequestFile.toWrite -= write(this->RequestFile.fd, request + start, writtendata);
+                    offset += writtendata - 1; // could cause issues
+                    //std::cout << "new offset is " << offset << "new to write bytes " << this->RequestFile.toWrite << std::endl;
+                    break; // either no more readbytes --> end of loop | update c.
                 }
-                else
-                    break;
+                if (c != '\r')
+                    throw ("bad chunked encoding missing CR");
+                this->RequestFile.state = CR2;
+                break;
             case CR2:
                 if (c != '\n')
                     throw ("bad chunked encoding missign CR2");
-                if ((end == start) || ((end - start) != stringToLong(this->RequestFile.chunk_lent)))
-                    throw ("bad chunked encoding : bad chunk size");
-                this->RequestFile.state = write_chunk;
-            case write_chunk:
-                size_t writtendata = write(this->RequestFile.fd, request + start, end - start);
-                //write(1, "has written\n", 12);
-                //write (1, request + start, end - start);
-                if (writtendata != end - start)
-                    throw ("partial/failed write"); // internal server error
                 start = 0;
-                end = 0;
+                this->RequestFile.chunk_lent.clear();
                 this->RequestFile.state = chunk_size;
-                break;// handle general case after that handle edge case.
+                break;
             case CR3:
                 if (c != '\r')
                     throw ("bad chunked econding missing CR3");
@@ -539,10 +553,15 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                 if (c != '\n')
                     throw ("bad chunked encoding missing LF3");
                 this->RequestFile.state = chunk_done;
+                this->MainState = Done;
+                this->SubState = doneParsing;
+                close(this->RequestFile.fd);
                 break;
             case chunk_done: // if this was accessed it means there is still data read after last chunk
                 std::cout << "chunk transfer is done ignoring the remaining data" << std::endl;
+                this->RequestFile.state = chunk_done;
                 this->MainState = Done;
+                this->SubState = doneParsing;
                 close(this->RequestFile.fd);
                 break;
         }
@@ -562,6 +581,7 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
     if (this->RequestFile.offset == this->RequestFile.size)
     {
         std::cout << "File received completly" << std::endl;
+        close(this->RequestFile.fd);
         this->MainState = Done;
     }
 }

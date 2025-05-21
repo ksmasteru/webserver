@@ -70,6 +70,7 @@ typedef struct s_FILE{
     unsigned long size;
     Chunk_State state;
     std::string chunk_lent;
+    size_t toWrite;// number of characters to write on a chuck
 }t_FILE;
 
 class  Request{ // read event.
@@ -130,7 +131,7 @@ class  Request{ // read event.
         return this->MainState;
     }
     void    contentLengthBody(char *request, int offset, int readBytes);
-    void    chunkedBody(char *request, int offset, int readBytes);
+    void    chunkedBody(char *, int, int);
     int     getPostFd();
     std::string getExtension();
     ~Request(){}

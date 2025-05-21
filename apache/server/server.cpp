@@ -108,7 +108,7 @@ void Server::handleWriteEvent(int fd)
 {
     // writing to client of fd.
     // minium write operation should cover the header.
-    std::cout << "received a write event on client of fd " << fd << std::endl;
+    //std::cout << "received a write event on client of fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client not found " << std::endl;
@@ -116,7 +116,8 @@ void Server::handleWriteEvent(int fd)
     }
     if (clients[fd]->request.getState() != Done) /*change into unique labels*/
     {
-        std::cout << "client of fd not ready to receive data " << std::endl;
+        //std::cout << "client of fd not ready to receive data " << std::endl;
+        //usleep(5000);
         return ;
     }
     // make reponse then write it.
