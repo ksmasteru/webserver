@@ -145,7 +145,6 @@ int Server::run()
     while (true)
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
-        //std::cout << "num events is " << num_events << std::endl;
         if (num_events == -1)
             return EXIT_FAILURE;
         for (int i = 0; i < num_events; i++)
@@ -156,11 +155,10 @@ int Server::run()
                 addNewClient();
                 continue;
             }
-            else if (data.events[i].events & EPOLLIN) /* data can be read */
+            else if (data.events[i].events & EPOLLIN)
                 handleReadEvent(data.events[i].data.fd);
             if (data.events[i].events & EPOLLOUT)
                 handleWriteEvent(data.events[i].data.fd);
-            // here you should add the exist code
         }
     }
     close(data.sfd);

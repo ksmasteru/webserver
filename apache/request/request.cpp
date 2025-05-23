@@ -53,10 +53,6 @@ Request::Request()
     totLent = 0;
 }
 
-/*const std::map<int, std::string>&   Request::getMap() const{
-    return (this->parse_map);
-}*/
-
 const std::string&   Request::getRawRequest() const{
     return (this->RawRequest);
 }
@@ -98,7 +94,6 @@ void Request::parseRequestHeader(char* request, int readBytes)
     if (this->SubState < name)
         parseRequestLine(request, readBytes, offset); // increment offset;
     std::cout << "after parsing request line offset is "<< offset << " susbstate " << SubState << std::endl;
-    std::cout << "now parsing from " << request + offset << std::endl;
     for (; offset < _bytesread; offset++)
     {
         c = request[offset];
@@ -462,37 +457,24 @@ void Request::parseRequestBody(char *request, int offset, int readBytes)
     }
 }
 
-void Request::chunkedBody(char *request1, int offset, int readBytes)
+void Request::chunkedBody(char *request, int offset, int readBytes)
 {
     std::cout << "TODO chunkedBody" << std::endl;
     if (!openRequestFile)
         setUpPostFile();
-    // when sending it is no problem as  we send exactly one chunk at each send.
-    // last time state : -->
-    // altering request
+    //request[readBytes] = '\0';
+    //std::cout << "Request body ==========================================" << request + offset << std::endl;
+    //exit (1);
     size_t start = 0;
-    std::ostringstream ofs;
-    ofs << "2\r\n"
-        << "hello\n\r\n"
-        << "8\r\n"
-        << "myFriend\r\n"
-        << "0\r\n"
-        << "\r\n";
-    std::string str = ofs.str();
-    const char *request = str.c_str();
-    readBytes = str.length();
-    std::cout << "readBytes sind " << readBytes << std::endl;
-    offset = 0;
     char c;
     size_t writtendata = 0;
-    // hex numbers were not handled... : read exactly the number of bytes specified by the header.
     for (;offset < readBytes; offset++)
     {
         c = request[offset];
         start = offset;
         switch (this->RequestFile.state)
         {
-            case chunk_size: // check validty : doesnt get written;
+            case chunk_size:
                 if(c == '\r')
                 {
                     this->RequestFile.state = CR1;
@@ -522,16 +504,12 @@ void Request::chunkedBody(char *request1, int offset, int readBytes)
                 start = offset;
                 this->RequestFile.state = chunk_data;
             case chunk_data:
-                // write exatly the given bytes we write the minimal value of both either remaing or toWrite.
                 if (this->RequestFile.toWrite != 0)
                 {
-                    //std::cout << "to write bytes ist " << this->RequestFile.toWrite << std::endl;
                     writtendata = std::min(readBytes - start, this->RequestFile.toWrite);
-                    //std::cout << "available space to write ist " << writtendata << std::endl;
                     this->RequestFile.toWrite -= write(this->RequestFile.fd, request + start, writtendata);
-                    offset += writtendata - 1; // could cause issues
-                    //std::cout << "new offset is " << offset << "new to write bytes " << this->RequestFile.toWrite << std::endl;
-                    break; // either no more readbytes --> end of loop | update c.
+                    offset += writtendata - 1;
+                    break;
                 }
                 if (c != '\r')
                     throw ("bad chunked encoding missing CR");
@@ -557,7 +535,7 @@ void Request::chunkedBody(char *request1, int offset, int readBytes)
                 this->SubState = doneParsing;
                 close(this->RequestFile.fd);
                 break;
-            case chunk_done: // if this was accessed it means there is still data read after last chunk
+            case chunk_done:
                 std::cout << "chunk transfer is done ignoring the remaining data" << std::endl;
                 this->RequestFile.state = chunk_done;
                 this->MainState = Done;
@@ -566,9 +544,6 @@ void Request::chunkedBody(char *request1, int offset, int readBytes)
                 break;
         }
     }
-    // for loop finishes and we have unwritten data --> write the data and change
-    // lent_accordignly.
-
 }
 
 void Request::contentLengthBody(char *request, int offset, int readBytes)
@@ -647,6 +622,7 @@ bool Request::isAlive()
 {
     return (this->keep_alive);
 }
+
 std::string Request::getHttpVersion(){
     std::string version = "HTTP/";
     return (version + this->httpGreater + '.' + this->httpMinor);
