@@ -198,7 +198,7 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
         if (chunked)
             send(cfd, "0\r\n\r\n", 5, 0);
     }
-    std::cout << "sen " << sent << " file offset is " <<  fileOffset << std::endl;
+    std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
 }
 
 void GetResponse::handleErrorPage(const char *path, int cfd)
@@ -265,3 +265,49 @@ size_t  GetResponse::getSize()
     return (this->res_data.totallength);
 }
 
+void GetResponse::deleteResponse(int cfd, Request* req)
+{
+    // DELETE /file.html HTTP/1.1
+    // the request object handle the deletion and update code . state. 
+    this->_request = req; // ?
+    std::ostringstream ofs;
+    std::string path = "pages/" + req->getRequestPath();
+    if (access(path.c_str(), F_OK) == -1)
+        this->res_data.status = 404;
+    else if (access(path.c_str(), W_OK) == -1)
+        this->res_data.status = 403; // forbiden.
+    else
+    {
+        if (unlink(path.c_str()) == -1) /*internal error*/
+            this->res_data.status = 403;
+        else
+            this->res_data.status = 204;
+    }
+    switch (this->res_data.status)
+    {
+        case 204:
+            ofs << "HTTP/1.1 204 No Content \r\n"
+                << "Date: " + getTime() + " \r\n"
+                << "\r\n";
+            if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
+                throw ("send Error");
+            break;
+        case 403:
+            ofs << "HTTP/1.1 403 Forbidden \r\n"
+                << "Date: " + getTime() + " \r\n"
+                << "\r\n";
+            if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
+                throw ("send Error");
+            break;
+        case 404:
+            ofs << "HTTP/1.1 404 Not Found \r\n"
+                << "Date: " + getTime() + " \r\n" // needs additional \r\n ?
+                << "\r\n";
+            if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
+                throw ("send Error");
+            break;
+        default:
+            break;
+    }
+    this->state = ResponseDone;
+}

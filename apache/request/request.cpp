@@ -19,7 +19,8 @@ bool isPostRequest(char *str)
 bool isDeleteRequest(char *str)
 {
     return (str[0] == 'D' && str[1] == 'E' && str[2] == 'L'
-        && str[3] == 'E' && str[4] == 'T' && str[5] == ' ');
+        && str[3] == 'E' && str[4] == 'T' && str[5] == 'E'
+            && str[6] == ' ');
 }
 
 bool isHttp(char *str)
@@ -175,10 +176,7 @@ void Request::parseRequestHeader(char* request, int readBytes)
         if (this->getType().compare("GET") == 0 || this->getType().compare("DELETE") == 0)
         {
             if (offset != _bytesread)
-            {
-                std::cout << "offset: " << offset << " bytes read " << _bytesread << std::endl;
-                throw ("bad request body");
-            }
+                std::cout << "body of request has been ignored" << std::endl; 
             this->MainState = Done;
         }
         else
@@ -418,7 +416,7 @@ void Request::setUpPostFile()
         && (headers["Transfer-Encoding"] == "chunked"))
         this->RequestFile.type = Chunked;
     else
-        throw ("Bad Request"); /*RFC 7230*/
+        throw ("Bad Request");/*RFC 7230*/
     // determine file size based on transfer.
     if (this->RequestFile.type == Content_Length)
         this->RequestFile.size = stringToLong(headers["Content-Length"]);
@@ -471,7 +469,7 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
     for (;offset < readBytes; offset++)
     {
         c = request[offset];
-        start = offset;
+        start = offset; 
         switch (this->RequestFile.state)
         {
             case chunk_size:

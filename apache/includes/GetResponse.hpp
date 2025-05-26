@@ -49,4 +49,5 @@ class GetResponse : public AResponse
             state = sendingheader;
             openfile = false;
         }
+        void deleteResponse(int, Request*);
 };

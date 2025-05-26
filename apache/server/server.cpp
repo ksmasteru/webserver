@@ -128,6 +128,8 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->response.makeResponse(fd, &clients[fd]->request);
     else if (clients[fd]->request.getType().compare("POST") == 0)
         clients[fd]->response.successPostResponse(fd);
+    else if (clients[fd]->request.getType().compare("DELETE") == 0)
+        clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
     if (clients[fd]->response.getState() == ResponseDone /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
     {
         //std::cout << "client is still alive ..." << std::endl;
@@ -185,7 +187,6 @@ void Server::loadstatuscodes(const char* filepath)
         this->statusCodes.insert(std::pair<std::string, std::string>(key, value));
     }
 }
-
 
 int main()
 {
