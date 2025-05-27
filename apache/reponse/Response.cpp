@@ -1,9 +1,9 @@
-#include "../includes/GetResponse.hpp"
+#include "../includes/Response.hpp"
 #include <fstream>
 #include <sys/stat.h>
 
 
-GetResponse::GetResponse()
+Response::Response()
 {
     fileOffset = 0;
     sentBytes = 0;
@@ -12,7 +12,7 @@ GetResponse::GetResponse()
     this->state = sendingheader;
 }
 
-GetResponse::GetResponse(const std::string& type, Request* req, std::map<std::string, 
+Response::Response(const std::string& type, Request* req, std::map<std::string, 
 std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 {
     // first checks if the file exist based on this info : fill body header
@@ -21,7 +21,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 
 // response header should be lsat to get filled.
 
-std::string GetResponse::RspStatusline(unsigned int code)
+std::string Response::RspStatusline(unsigned int code)
 { 
     std::string statusCode = intToString(code);
     std::string Response;
@@ -48,7 +48,7 @@ std::string GetResponse::RspStatusline(unsigned int code)
     return (rsp);
 }
 
-std::string GetResponse::getTime()
+std::string Response::getTime()
 {
     std::time_t now = std::time(nullptr);
     std::tm *gmt = std::gmtime(&now);
@@ -58,7 +58,7 @@ std::string GetResponse::getTime()
     
 }
 
-std::string GetResponse::RspHeader(unsigned int cLength, unsigned int code)
+std::string Response::RspHeader(unsigned int cLength, unsigned int code)
 {
     std::string alive = "keep-alive"; // will be set later;
     std::ostringstream header;
@@ -109,7 +109,7 @@ std::string content(std::string extension )
     return contentMap[extension];
 }
 
-void GetResponse::sendHeader(const char *path, int cfd, bool redirection)
+void Response::sendHeader(const char *path, int cfd, bool redirection)
 {
     size_t extension_pos = this->_request->getRequestPath().rfind(".");
     if (redirection)
@@ -133,13 +133,13 @@ void GetResponse::sendHeader(const char *path, int cfd, bool redirection)
     this->state = sendingBody;
 }
 
-void GetResponse::getFileReady(int fd)
+void Response::getFileReady(int fd)
 {
     off_t new_offset = lseek(fd, fileOffset, SEEK_SET);
     if (new_offset == -1)
         throw ("bad file seek");
 }
-void GetResponse::sendChunkHeader (int cfd, int readBytes)
+void Response::sendChunkHeader (int cfd, int readBytes)
 {
     std::stringstream ss;
     ss << std::hex << readBytes << "\r\n";  // Convert to hexadecimal
@@ -149,7 +149,7 @@ void GetResponse::sendChunkHeader (int cfd, int readBytes)
         throw ("bad send");
 }
 
-int GetResponse::getFd(const char *path)
+int Response::getFd(const char *path)
 {
      if (openfile)
         return fd;
@@ -159,7 +159,7 @@ int GetResponse::getFd(const char *path)
     openfile = true;
     return this->fd;
 }
-void GetResponse::sendPage(const char *path, int cfd, bool redirection)
+void Response::sendPage(const char *path, int cfd, bool redirection)
 {
     // you could at the start open the file and keep it open
     // this way you dont have to lseek or multiple open close.
@@ -201,7 +201,7 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
     std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
 }
 
-void GetResponse::handleErrorPage(const char *path, int cfd)
+void Response::handleErrorPage(const char *path, int cfd)
 {
     if (access(path, F_OK) == -1)
     {
@@ -216,7 +216,7 @@ void GetResponse::handleErrorPage(const char *path, int cfd)
 }
 
 // send repsonse and close cfd for GET!!!.
-void GetResponse::makeResponse(int cfd, Request* req)
+void Response::makeResponse(int cfd, Request* req)
 {
     this->_request = req;
     std::cout << "make response called" << std::endl;
@@ -234,7 +234,7 @@ void GetResponse::makeResponse(int cfd, Request* req)
 }
 
 // header of a successful post response.
-void GetResponse::successPostResponse(int cfd)
+void Response::successPostResponse(int cfd)
 {
     std::ostringstream ofs;
     ofs << "HTTP/1.1 201 Created \r\n"
@@ -246,26 +246,26 @@ void GetResponse::successPostResponse(int cfd)
     std::cout << "sent post response" << header <<std::endl;
     this->state = ResponseDone;
 }
-const char* GetResponse::getRes() const
+const char* Response::getRes() const
 {
     return (this->resp_msg);
 }
 
-bool GetResponse::isAlive() const
+bool Response::isAlive() const
 {
     return true;
 }
 
-GetResponse::~GetResponse()
+Response::~Response()
 {
 }
 
-size_t  GetResponse::getSize()
+size_t  Response::getSize()
 {
     return (this->res_data.totallength);
 }
 
-void GetResponse::deleteResponse(int cfd, Request* req)
+void Response::deleteResponse(int cfd, Request* req)
 {
     // DELETE /file.html HTTP/1.1
     // the request object handle the deletion and update code . state. 
@@ -275,7 +275,7 @@ void GetResponse::deleteResponse(int cfd, Request* req)
     if (access(path.c_str(), F_OK) == -1)
         this->res_data.status = 404;
     else if (access(path.c_str(), W_OK) == -1)
-        this->res_data.status = 403; // forbiden.
+        this->res_data.status = 403; // forbidden.
     else
     {
         if (unlink(path.c_str()) == -1) /*internal error*/

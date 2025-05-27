@@ -3,7 +3,7 @@
 #include "../includes/Iconnect.hpp"
 #define STATUS_PATH "/home/hes-saqu/Desktop/webserver/apache/server/codes.txt"
 #include "../includes/AResponse.hpp"
-#include "../includes/GetResponse.hpp"
+#include "../includes/Response.hpp"
 #include <fstream>
 
 Server::Server()
@@ -60,6 +60,13 @@ void Server::addNewClient()
     this->clients[client_fd] = new_client;
 }
 
+void Server::removeClient(int   fd)
+{
+    close(fd);
+    delete clients[fd];
+    clients.erase(fd);
+}
+
 void Server::handleReadEvent(int fd)
 {
     //std::cout << "new read event for fd " << fd << std::endl;
@@ -83,7 +90,10 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << msg << std::endl;
-                exit(1);
+                // request shoulld be aborted
+                sendBadRequest(fd);
+                removeClient(fd);
+                return ;
             }
             break;
         case ReadingRequestBody:
@@ -93,7 +103,10 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << msg << std::endl;
-                exit(1);
+                // send bad request then close.
+                sendBadRequest(fd);
+                removeClient(fd);
+                return ;
             }
             break;
         default:
@@ -102,6 +115,16 @@ void Server::handleReadEvent(int fd)
     }
     if (clients[fd]->request.getState() == Done)
         std::cout << "read event handled successfuly for target url " << clients[fd]->request.getRequestPath() << std::endl;
+}
+
+void Server::sendBadRequest(int fd)
+{
+    std::ostringstream msg;
+
+    msg << "HTTP/1.1 400 Bad Request \r\n"
+        << "\r\n";
+    if (send(fd, msg.str().c_str(), msg.str().length(), MSG_NOSIGNAL) == - 1)
+        throw("send error");        
 }
 
 void Server::handleWriteEvent(int fd)
@@ -141,6 +164,7 @@ void Server::handleWriteEvent(int fd)
         clients.erase(fd);
     }
 }
+
 int Server::run()
 {
     int client_fd;

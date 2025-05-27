@@ -1,6 +1,6 @@
 #pragma once
 
-#include "GetResponse.hpp"
+#include "Response.hpp"
 #include "Request.hpp"
 #include "server.hpp"
 
@@ -15,7 +15,7 @@ class Connection{
         struct timeval _timeout;
     public:
         Request request;
-        GetResponse response;
+        Response response;
         Connection(int client_fd, struct timeval& timeout){
             _client_fd = client_fd;
             _timeout = timeout;

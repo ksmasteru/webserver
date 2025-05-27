@@ -230,7 +230,7 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
                             break;
                         default:
                             throw("Bad Request method name\n");
-                    } 
+                    }
                     if (this->type.empty())
                         throw("bad request name\n"); 
                     this->SubState = after_method_space;

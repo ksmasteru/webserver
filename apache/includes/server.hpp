@@ -25,6 +25,7 @@ class Server{
         }
         void handleReadEvent(int);
         void handleWriteEvent(int);
+        void removeClient(int);
         void addNewClient();
         void loadstatuscodes(const char* filepath);
         int establishServer();
@@ -32,6 +33,7 @@ class Server{
         void handleRequest(int efd);
         char *getRequest(int client_fd);
         void parseRequest(const std::string& request, std::map<int, std::string>& map);
+        void sendBadRequest(int);
 };
 
 // handle request : getRequest --> getResponse --> sendRespond

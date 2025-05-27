@@ -7,7 +7,7 @@ enum  ResponseState{
     sendingBody,
     ResponseDone
 };
-class GetResponse : public AResponse
+class Response : public AResponse
 {
     private:
         int sentBytes;
@@ -18,9 +18,9 @@ class GetResponse : public AResponse
         int fd;
     public:
 
-        GetResponse(const std::string& type, Request *req, std::map<std::string, std::string>* status, int client_fd);
-        GetResponse();
-        virtual ~GetResponse();
+        Response(const std::string& type, Request *req, std::map<std::string, std::string>* status, int client_fd);
+        Response();
+        virtual ~Response();
         void  makeResponse(int cfd, Request*);
         void    getFileReady(int fd);
         std::string getTime();
