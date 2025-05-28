@@ -1,9 +1,10 @@
 #include "../includes/webserver.hpp"
 #include "../includes/server.hpp"
 #include "../includes/Iconnect.hpp"
-#define STATUS_PATH "/home/hes-saqu/Desktop/webserver/apache/server/codes.txt"
+#define STATUS_PATH "./codes.txt"
 #include "../includes/AResponse.hpp"
 #include "../includes/Response.hpp"
+#include "../includes/ConfigParser.hpp"
 #include <fstream>
 
 Server::Server()
@@ -212,15 +213,27 @@ void Server::loadstatuscodes(const char* filepath)
     }
 }
 
-int main()
+int main(int ac, char **av)
 {
+    std::string confFile = (ac == 2) ? av[1] : "../webserv.conf";
+    if (confFile.compare(confFile.size() - 5, 5, ".conf") != 0)
+            return std::cerr << "Error: Config file must have a .conf extension" << std::endl, 1;
     Server apache;
+    ConfigParser confParser;
     try {
-        apache.establishServer();
+        confParser.parse(confFile);
+        confParser.printConfig();
+        // apache.establishServer();
     }
     catch (const char *error_msg)
     {
         std::cout << "error : " << error_msg << std::endl;
+        return 1;
+    }
+    catch(std::exception &e)
+    {
+        std::cout << e.what() << std::endl;
+        return 1;
     }
     apache.run();
 }
