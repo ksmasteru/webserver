@@ -14,6 +14,7 @@ class Connection;
 class Server
 {
 private:
+    std::vector<int> serverSockets;
     std::vector<int> _ports;
     std::vector<std::string> _hosts;
     std::vector<std::string> _serverNames;
@@ -23,10 +24,10 @@ private:
     //
     //
     std::map<std::string, std::string> statusCodes;
-    Server(Server &rhs);
+    // Server(Server &rhs);
     // Server &operator=(Server &rhs);
     bool loadedStatusCodes;
-    std::map<int, struct client> activity;
+    // std::map<int, struct client> activity;
     t_InetData data;
     std::map<int, Connection *> clients;
 
@@ -74,6 +75,7 @@ public:
                 _hosts.erase(_hosts.begin() + i);
         }
     }
+    void establishServers();
 
     // Debug print
     void print() const

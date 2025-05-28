@@ -9,6 +9,11 @@
 
 class Connection{
     private:
+        // 
+        // add the associated server to generate a proper response depending on the server's configuration.
+        // and i you asking why not each port is in a different server object?
+        // because they have the same configuration, so we can use the same server object.
+        Server _server;
         //AResponse *resp;
         int _client_fd;
         // time connection started;
