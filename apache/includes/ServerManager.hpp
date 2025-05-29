@@ -21,6 +21,56 @@ public:
             exit(EXIT_FAILURE);
         }
     }
+    bool isServerSocket(int fd)
+    {
+        for (int i = 0; i < serverSockets.size(); i++)
+        {
+            if (fd == serverSockets[i])
+                return true;
+        }
+        return false;
+    }
+    int findServerIndex(std::string host, std::string port, std::vector<Server> servers)
+    {
+        // host and port in params are coming from request this function is needed after parsing request to find the server config to generate response from
+        int targetPort;
+        try {
+            targetPort = std::stoi(port);
+        } catch (const std::exception& e) {
+            return -1;
+        }
+        
+        for (size_t i = 0; i < servers.size(); i++)
+        {
+            std::vector<std::string> hosts = servers[i].getHosts();
+            std::vector<int> ports = servers[i].getPorts();
+            
+            bool hostMatch = false;
+            for (size_t j = 0; j < hosts.size(); j++)
+            {
+                if (hosts[j] == host)
+                {
+                    hostMatch = true;
+                    break;
+                }
+            }
+            
+            bool portMatch = false;
+            for (size_t k = 0; k < ports.size(); k++)
+            {
+                if (ports[k] == targetPort)
+                {
+                    std::cout << "port target : " << ports[k] << std::endl;
+                    portMatch = true;
+                    break;
+                }
+            }
+            
+            if (hostMatch && portMatch)
+                return static_cast<int>(i);
+        }
+        return -1;
+    }
     void establishServers()
     {
         for (size_t i = 0; i < servers.size(); ++i)
