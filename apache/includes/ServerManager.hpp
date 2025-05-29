@@ -33,6 +33,7 @@ public:
     int findServerIndex(std::string host, std::string port, std::vector<Server> servers)
     {
         // host and port in params are coming from request this function is needed after parsing request to find the server config to generate response from
+        // or we can just map the server from the connection reques, but we need to map sockets with servers like an vector<vector<int>> where each element is a server and contains its sockets
         int targetPort;
         try {
             targetPort = std::stoi(port);
