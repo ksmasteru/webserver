@@ -5,6 +5,7 @@
 #include "../includes/AResponse.hpp"
 #include "../includes/Response.hpp"
 #include "../includes/ConfigParser.hpp"
+#include "../includes/ServerManager.hpp"
 #include <fstream>
 
 Server::Server()
@@ -216,62 +217,6 @@ void Server::loadstatuscodes(const char *filepath)
     }
 }
 
-void Server::establishServers()
-{
-    std::vector<std::string> hosts = getHosts();
-    std::vector<int> ports = getPorts();
-
-    for (size_t h = 0; h < hosts.size(); ++h)
-    {
-        for (size_t p = 0; p < ports.size(); ++p)
-        {
-            int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-            if (serverSocket < 0)
-            {
-                std::cerr << "Error creating socket" << std::endl;
-                continue;
-            }
-            int opt = 1;
-            setsockopt(serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-            struct sockaddr_in serverAddr;
-            serverAddr.sin_family = AF_INET;
-            serverAddr.sin_port = htons(ports[p]);
-
-            if (inet_pton(AF_INET, hosts[h].c_str(), &serverAddr.sin_addr) <= 0)
-            {
-                perror("Invalid address");
-                close(serverSocket);
-                continue;
-            }
-
-            if (bind(serverSocket, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0)
-            {
-                std::cerr << "Error binding socket to " << hosts[h] << ":" << ports[p] << std::endl;
-                close(serverSocket);
-                continue;
-            }
-
-            if (listen(serverSocket, SOMAXCONN) < 0)
-            {
-                std::cerr << "Error listening on socket " << hosts[h] << ":" << ports[p] << std::endl;
-                close(serverSocket);
-                continue;
-            }
-            set_nonblocking(serverSocket);
-            serverSockets.push_back(serverSocket);
-            std::cout << "Listening on " << hosts[h] << ":" << ports[p] << std::endl;
-        }
-    }
-}
-
-void ::establishServers(std::vector<Server> &servers)
-{
-    for (size_t i = 0; i < servers.size(); i++)
-    {
-        servers[i].establishServers();
-    }
-}
-
 int main(int ac, char **av)
 {
     std::string confFile = (ac == 2) ? av[1] : "../webserv.conf";
@@ -279,13 +224,12 @@ int main(int ac, char **av)
         return std::cerr << "Error: Config file must have a .conf extension" << std::endl, 1;
     Server apache;
     ConfigParser confParser; 
-    std::vector<Server> apaches;
     try
     {
         confParser.parse(confFile);
         confParser.printConfig();
-        apaches = confParser.getServers();
-        establishServers(apaches);
+        ServerManager servManager(confParser.getServers());
+        servManager.establishServers();
         apache.establishServer();
     }
     catch (const char *error_msg)

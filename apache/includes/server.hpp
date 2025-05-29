@@ -10,7 +10,7 @@
 #include "Connection.hpp"
 #include "Location.hpp"
 
-class Connection;
+// class Connection;
 class Server
 {
 private:
