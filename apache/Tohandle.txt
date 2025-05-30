@@ -38,3 +38,5 @@ A server that receives a request message with a
    the recipient MUST consider the message to be incomplete and close the connection.
 
    
+
+   a keepalive tiemout (5s by default) and a connection timeout (2min

@@ -24,6 +24,7 @@ class Server{
         ~Server(){
         }
         void handleReadEvent(int);
+        void unBindTimedOutClients();
         void handleWriteEvent(int);
         void removeClient(int);
         void addNewClient();

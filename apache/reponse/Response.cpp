@@ -165,7 +165,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     // this way you dont have to lseek or multiple open close.
     // you only close after timeout or response all sent.
     sentBytes = 0;
-    chunked = true;
+    chunked = false;
     if (this->getState() == sendingheader)
     {
         std::cout << "sending header" << std::endl;

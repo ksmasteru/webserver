@@ -19,9 +19,11 @@
 #include <thread>   
 #include "utils.hpp"
 #include <ctime>
+#include <sys/time.h>
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024
+#define CLIENT_TIMEOUT 5
 #include <string>
 typedef std::map<std::string, std::string> dstring_map;
 typedef struct InetData{

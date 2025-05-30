@@ -618,7 +618,13 @@ std::string Request::getRequestPath()
 
 bool Request::isAlive()
 {
-    return (this->keep_alive);
+    if (headers.find("Connection") != headers.end()
+        && headers["Connection"] == "keep-alive") /*case sensitive*/
+    {
+        std::cout << "Client is Staying alive...!!!" << std::endl;
+        return (true);
+    }
+    return (false);
 }
 
 std::string Request::getHttpVersion(){

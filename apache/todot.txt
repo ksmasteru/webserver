@@ -1,6 +1,6 @@
 for post : opening an objeect only happens the first time.
 
-// let's have a file struct : fd, name, size, transfer type, bytes"sent oder received"
-// and a bool thatcheck if it is open.
-
 // program shouldnt stop in case of bad request type.
+
+
+//  handle timeout. : after 5 seconds of no activity delete connection.

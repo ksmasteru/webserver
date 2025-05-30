@@ -36,6 +36,7 @@ int Server::establishServer()
     */return (0);
 }
 
+/*testing : changing epoll watchlist.*/
 void Server::addNewClient()
 {
     int client_fd = accept(data.sfd, NULL, 0);
@@ -50,26 +51,30 @@ void Server::addNewClient()
     if (setsockopt(data.sfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
         throw std::runtime_error("setsockopt failed");
     struct epoll_event event;
-    event.events = EPOLLIN | EPOLLOUT | EPOLLERR; 
+    event.events = EPOLLIN | EPOLLERR; // reading and error. 
     event.data.fd = client_fd;
     if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
         throw ("epoll_ctl fail");
     set_nonblocking(client_fd);
     // create a connection object and att it to <fd, connection>map;
-    Connection* new_client = new Connection(client_fd, timeout);
+    struct timeval startTime;
+    gettimeofday(&startTime, nullptr);
+    Connection* new_client = new Connection(client_fd, startTime);
+    // makes no sense.
     this->clients[client_fd] = new_client;
 }
 
 void Server::removeClient(int   fd)
 {
-    close(fd);
+    std::cout << "------------removing client of -----------" << fd << std::endl;
+     close(fd);
     delete clients[fd];
     clients.erase(fd);
 }
 
 void Server::handleReadEvent(int fd)
 {
-    //std::cout << "new read event for fd " << fd << std::endl;
+    std::cout << "new read event for fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client of fd: " << fd << " was not found" << std::endl;
@@ -80,6 +85,11 @@ void Server::handleReadEvent(int fd)
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
         throw ("recv failed");
+    if (readBytes > 0)
+    {
+        std::cout << "resetting connection of " << fd << std::endl;
+        this->clients[fd]->resetTime();
+    }
     //std::cout << "Reead bytes are " << readBytes << std::endl;
     switch (clients[fd]->request.getState())
     {
@@ -113,8 +123,19 @@ void Server::handleReadEvent(int fd)
             std::cout << "waiting for the response to finish" << std::endl;
             break;
     }
-    if (clients[fd]->request.getState() == Done)
+    if (clients[fd]->request.getState() == Done)/*!!!!!!!!!!new code*/
+    {
         std::cout << "read event handled successfuly for target url " << clients[fd]->request.getRequestPath() << std::endl;
+        // now open write mode acces for epoll.
+        struct epoll_event event;
+        event.events = EPOLLOUT | EPOLLERR;
+        event.data.fd = fd;
+        if (epoll_ctl(data.epollfd, EPOLL_CTL_MOD, fd, &event) == -1)
+        {
+            close(data.epollfd); // Important: Close the epoll fd on error
+            throw("epoll_ctl");
+        }
+    }
 }
 
 void Server::sendBadRequest(int fd)
@@ -131,7 +152,7 @@ void Server::handleWriteEvent(int fd)
 {
     // writing to client of fd.
     // minium write operation should cover the header.
-    //std::cout << "received a write event on client of fd " << fd << std::endl;
+    std::cout << "received a write event on client of fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client not found " << std::endl;
@@ -139,7 +160,6 @@ void Server::handleWriteEvent(int fd)
     }
     if (clients[fd]->request.getState() != Done) /*change into unique labels*/
     {
-        //std::cout << "client of fd not ready to receive data " << std::endl;
         //usleep(5000);
         return ;
     }
@@ -155,13 +175,36 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
     if (clients[fd]->response.getState() == ResponseDone /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
     {
-        //std::cout << "client is still alive ..." << std::endl;
-        //clients[fd]->request.reset();
-        //clients[fd]->response.reset();
-        std::cout << "deleting connection ..." << std::endl;
-        close(fd);
-        delete clients[fd];
-        clients.erase(fd);
+        // afte writing we could remove it from epoll ?
+        // we wont write anything until we get a request.
+        if (!clients[fd]->request.isAlive()) /*keep alive*/
+            removeClient(fd);
+        else /*revoke write permission*/
+        {
+            std::cout << "giving write acces to client of fd " << fd << std::endl;
+            struct epoll_event event;
+            event.events = EPOLLIN | EPOLLERR;
+            event.data.fd = fd;
+            if (epoll_ctl(data.epollfd, EPOLL_CTL_MOD, fd, &event) == -1)
+                throw ("epoll_ctl failed");
+            clients[fd]->resetTime();
+        }
+    }
+}
+
+void Server::unBindTimedOutClients()
+{
+    // iterate the clients map unbind those who timedout
+    std::map <int, Connection*>::iterator it;
+    struct timeval curTime;
+    gettimeofday(&curTime, nullptr);
+    for (it = clients.begin(); it != clients.end(); ++it)
+    {
+        if ((curTime.tv_sec - it->second->getTime().tv_sec) >= CLIENT_TIMEOUT)
+        {
+            std::cout << "client of fd: " << it->first << " has timedOut" << std::endl;
+            removeClient(it->first);
+        }
     }
 }
 
@@ -173,6 +216,8 @@ int Server::run()
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
             return EXIT_FAILURE;
+        // delete timedout  clients;
+        //unBindTimedOutClients();
         for (int i = 0; i < num_events; i++)
         {
             if (data.events[i].data.fd == data.sfd)
