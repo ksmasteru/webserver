@@ -40,9 +40,10 @@ int Server::establishServer()
 void Server::addNewClient()
 {
     int client_fd = accept(data.sfd, NULL, 0);
+    // accept gives increasign values.
     if (client_fd == -1)
         throw ("client couldnt connect");
-    std::cout << "new client Connected " << std::endl;
+    std::cout << "new client Connected : id " << client_fd << std::endl;
     // clear
     struct timeval timeout;
     // set starting time in client, time map close the connection if times exces 10.
@@ -67,17 +68,17 @@ void Server::addNewClient()
 void Server::removeClient(int   fd)
 {
     std::cout << "------------removing client of -----------" << fd << std::endl;
-     close(fd);
+    close(fd);
     delete clients[fd];
     clients.erase(fd);
 }
 
 void Server::handleReadEvent(int fd)
 {
-    std::cout << "new read event for fd " << fd << std::endl;
+    //std::cout << "new read event for fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
-        std::cout << "client of fd: " << fd << " was not found" << std::endl;
+        //std::cout << "client of fd: " << fd << " was not found" << std::endl;
         return ;
     }
     char buffer[BUFFER_SIZE];
@@ -85,9 +86,14 @@ void Server::handleReadEvent(int fd)
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
         throw ("recv failed");
+    else if (readBytes == 0)
+    {
+        std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;
+        return ;
+    }
     if (readBytes > 0)
     {
-        std::cout << "resetting connection of " << fd << std::endl;
+        std::cout << "resetting connection timer of " << fd << std::endl;
         this->clients[fd]->resetTime();
     }
     //std::cout << "Reead bytes are " << readBytes << std::endl;
@@ -100,7 +106,6 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << msg << std::endl;
-                // request shoulld be aborted
                 sendBadRequest(fd);
                 removeClient(fd);
                 return ;
@@ -113,7 +118,6 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << msg << std::endl;
-                // send bad request then close.
                 sendBadRequest(fd);
                 removeClient(fd);
                 return ;
@@ -152,7 +156,7 @@ void Server::handleWriteEvent(int fd)
 {
     // writing to client of fd.
     // minium write operation should cover the header.
-    std::cout << "received a write event on client of fd " << fd << std::endl;
+    //std::cout << "received a write event on client of fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
         std::cout << "client not found " << std::endl;
@@ -173,6 +177,8 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->response.successPostResponse(fd);
     else if (clients[fd]->request.getType().compare("DELETE") == 0)
         clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
+    // reset timeout timer
+    clients[fd]->resetTime();
     if (clients[fd]->response.getState() == ResponseDone /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
     {
         // afte writing we could remove it from epoll ?
@@ -181,13 +187,10 @@ void Server::handleWriteEvent(int fd)
             removeClient(fd);
         else /*revoke write permission*/
         {
-            std::cout << "giving write acces to client of fd " << fd << std::endl;
-            struct epoll_event event;
-            event.events = EPOLLIN | EPOLLERR;
-            event.data.fd = fd;
-            if (epoll_ctl(data.epollfd, EPOLL_CTL_MOD, fd, &event) == -1)
-                throw ("epoll_ctl failed");
-            clients[fd]->resetTime();
+            // just reset everything.
+            clients[fd]->request.reset();
+            clients[fd]->response.reset();
+            // block write?
         }
     }
 }
@@ -207,6 +210,22 @@ void Server::unBindTimedOutClients()
         }
     }
 }
+/*Checks of a client of a given ID connection was closed
+which will require add him as a new client with a new fd
+or else send call will SIGPIPE*/
+bool Server::clientWasRemoved(int toFind)
+{
+    //std::cout << "to find " << toFind << std::endl;
+    std::map<int, Connection*>::iterator it;
+
+    for (it = this->clients.begin() ;it != this->clients.end(); ++it)
+    {
+        if (toFind == it->first)
+             return (false);
+    }
+    std::cout << "----------client was removed previously------------" << std::endl;
+    return (true);
+}
 
 int Server::run()
 {
@@ -215,23 +234,36 @@ int Server::run()
     {
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
-            return EXIT_FAILURE;
+        {
+                throw("off events!");
+        }
         // delete timedout  clients;
-        //unBindTimedOutClients();
+        unBindTimedOutClients();
         for (int i = 0; i < num_events; i++)
         {
-            if (data.events[i].data.fd == data.sfd)
+            if ((data.events[i].data.fd == data.sfd))
             {
                 std::cout << "server socket" << std::endl;
                 addNewClient();
                 continue;
             }
             else if (data.events[i].events & EPOLLIN)
+            {
+                /*if (clientWasRemoved(data.events[i].data.fd))
+                {
+                    addNewClient();
+                    continue;
+                }*/
                 handleReadEvent(data.events[i].data.fd);
+            }
             if (data.events[i].events & EPOLLOUT)
+            {
+                // if client connection was closed skip!
                 handleWriteEvent(data.events[i].data.fd);
+            }
         }
     }
+    std::cout << "loop exited" << std::endl;
     close(data.sfd);
     close(data.epollfd);
     return 0;
@@ -267,5 +299,10 @@ int main()
     {
         std::cout << "error : " << error_msg << std::endl;
     }
-    apache.run();
+    try{
+        apache.run();}
+    catch (const char *error_msg)
+    {
+        std::cout << "error : " << error_msg << std::endl;
+    }
 }

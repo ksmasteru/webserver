@@ -40,3 +40,17 @@ A server that receives a request message with a
    
 
    a keepalive tiemout (5s by default) and a connection timeout (2min
+
+   // if a client send a request after he has been removed it causes a SIGPIP.
+   // client timeout + send again a request error:
+   // add a functions that checks wheter the fd is closed ?
+// if it is closed and you receive a read event it should be added
+// as a new client and given a new fd.
+
+// sending the wrong page asked causes the browser to close the connection.
+// to avoid sigpip check readines to write  ?
+// easy solution send the whole 404page in one send. // Fixedd !
+
+
+// !!!handle client closing connection mid transfer : HARD
+

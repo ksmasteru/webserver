@@ -17,6 +17,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 {
     // first checks if the file exist based on this info : fill body header
     // shalow copy of request.
+     
 }
 
 // response header should be lsat to get filled.
@@ -164,6 +165,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     // you could at the start open the file and keep it open
     // this way you dont have to lseek or multiple open close.
     // you only close after timeout or response all sent.
+    std::cout << "sending page of path " << path << std::endl;
     sentBytes = 0;
     chunked = false;
     if (this->getState() == sendingheader)
@@ -180,25 +182,54 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
         throw ("read fail");
+    std::cout <<  "readbytes are " << readbytes << std::endl;
     if (chunked)
         sendChunkHeader(cfd, readbytes);
-    int sent = send(cfd,  buffer, readbytes, 0);
+    int sent = send(cfd,  buffer, readbytes, MSG_NOSIGNAL);
     if (sent == -1)
     {
         close (fd);
         openfile = false;
-        throw ("send fail");
+        throw ("send fail 1");
     }
     fileOffset += sent;
     if (chunked)
-        send(cfd, "\r\n", 2, 0); 
+        send(cfd, "\r\n", 2, MSG_NOSIGNAL); 
     if (readbytes < R_BUFF || readbytes == 0)
     {
         this->state = ResponseDone;
         if (chunked)
             send(cfd, "0\r\n\r\n", 5, 0);
     }
+    // reset timer of clients.
     std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
+}
+
+/*to avoid client closing the connection ; which
+will result  in a sigpipe sending the error page
+in one send and thus setting response status to Done*/
+void Response::sendNotFoundPage(const char* path, int cfd, bool redir)
+{
+    std::cout << "sending not found page" << std::endl;
+    // try sending header then send body.
+    // if it doesnt work send both header and body in one.
+    sendHeader(path, cfd, redir);
+    int R_BUFF = this->res_data.clength;
+    int fd =  getFd(path);
+    char *buffer[R_BUFF];
+    int readBytes = read(fd, buffer, R_BUFF);
+    if (readBytes < 0)
+        throw ("read fail");
+    std::cout <<  "readbytes are " << readBytes << std::endl;
+    int sent = send(cfd,  buffer, readBytes, MSG_NOSIGNAL);
+    if (sent != readBytes)
+    {
+        close (fd);
+        openfile = false;
+        throw ("send fail 1");
+    }
+    close(fd);
+    this->state = ResponseDone;
 }
 
 void Response::handleErrorPage(const char *path, int cfd)
@@ -206,7 +237,7 @@ void Response::handleErrorPage(const char *path, int cfd)
     if (access(path, F_OK) == -1)
     {
         this->res_data.status = 404;
-        return (sendPage("pages/404.html", cfd, true));
+        return (sendNotFoundPage("pages/404.html", cfd, true));
     }
     else if (access(path, R_OK) == -1)
     {

@@ -83,6 +83,12 @@
         "__string": "cpp",
         "execution": "cpp",
         "condition_variable": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "__errc": "cpp",
+        "bitset": "cpp",
+        "forward_list": "cpp",
+        "queue": "cpp",
+        "__nullptr": "cpp",
+        "print": "cpp"
     }
 }

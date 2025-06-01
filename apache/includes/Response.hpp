@@ -43,11 +43,12 @@ class Response : public AResponse
         }
         void reset()
         {
-            std::cout << "reseting getResponse..." << std::endl;
+            std::cout << "reseting Response..." << std::endl;
             sentBytes = 0;
             fileOffset = 0;
             state = sendingheader;
             openfile = false;
         }
         void deleteResponse(int, Request*);
+        void sendNotFoundPage(const char* path, int cfd, bool redir);
 };
