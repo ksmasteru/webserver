@@ -198,6 +198,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     if (readbytes < R_BUFF || readbytes == 0)
     {
         this->state = ResponseDone;
+        close(fd); // reason of increasing fd values ?
         if (chunked)
             send(cfd, "0\r\n\r\n", 5, 0);
     }

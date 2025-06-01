@@ -32,6 +32,7 @@ class Server{
         int establishServer();
         int run();
         void handleRequest(int efd);
+        void handelSocketError(int);
         char *getRequest(int client_fd);
         void parseRequest(const std::string& request, std::map<int, std::string>& map);
         void sendBadRequest(int);

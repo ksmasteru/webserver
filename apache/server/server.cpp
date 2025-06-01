@@ -52,7 +52,7 @@ void Server::addNewClient()
     if (setsockopt(data.sfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
         throw std::runtime_error("setsockopt failed");
     struct epoll_event event;
-    event.events = EPOLLIN | EPOLLERR; // reading and error. 
+    event.events = EPOLLIN | EPOLLHUP | EPOLLERR; // reading and error. 
     event.data.fd = client_fd;
     if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
         throw ("epoll_ctl fail");
@@ -195,6 +195,17 @@ void Server::handleWriteEvent(int fd)
     }
 }
 
+void Server::handelSocketError(int fd)
+{
+    if (clients.find(fd) == clients.end())
+    {
+        std::cout << "client not found " << std::endl;
+        return ;
+    }
+    std::cout << "------ERROR EVENT ON " << fd << std::endl;
+    removeClient(fd);
+}
+
 void Server::unBindTimedOutClients()
 {
     // iterate the clients map unbind those who timedout
@@ -232,13 +243,14 @@ int Server::run()
     int client_fd;
     while (true)
     {
+        unBindTimedOutClients();
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
         {
                 throw("off events!");
         }
+       // std::cout << "num event ist " << num_events << std::endl;
         // delete timedout  clients;
-        unBindTimedOutClients();
         for (int i = 0; i < num_events; i++)
         {
             if ((data.events[i].data.fd == data.sfd))
@@ -261,6 +273,11 @@ int Server::run()
                 // if client connection was closed skip!
                 handleWriteEvent(data.events[i].data.fd);
             }
+            else if (data.events[i].events & EPOLLHUP || data.events[i].events & EPOLLERR)
+            {
+                handelSocketError(data.events[i].data.fd);
+            }
+            // handle epollERr and epollhup
         }
     }
     std::cout << "loop exited" << std::endl;
