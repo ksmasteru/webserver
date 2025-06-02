@@ -29,6 +29,7 @@ int createEpoll(struct epoll_event* event, int socketfd)
         std::cerr << "Error adding server socket to epoll" << std::endl;
         return -1;
     }
+    set_nonblocking(socketfd); // ! new code 02/6
     return epoll_fd;
 }
 

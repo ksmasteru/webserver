@@ -1,0 +1,92 @@
+#include "../includes/webserver.hpp"
+#include "../includes/ServerManager.hpp"
+#include "../includes/server.hpp"
+#include "../includes/Iconnect.hpp"
+
+ServerManager::ServerManager(std::vector<Server> &Servers) : servers(Servers)
+{
+    this->epoll_fd = epoll_create1(0);
+    if (this->epoll_fd == -1)
+        throw ("epoll create error");
+}
+
+bool ServerManager::isServerSocket(int fd)
+{
+    size_t lent = this->serverSockets.size();
+    for (int i = 0; i < lent; i++)
+    {
+        if (fd == serverSockets[i])
+            return (true);
+    }
+    return (false);
+}
+
+// determine which server will have to handle the host port request combo.
+int ServerManager::findServerIndex(std::string host, std::string port, std::vector<Server> servers)
+{
+    int targetPort = stringToInt(port);
+    for (size_t i = 0; i < servers.size(); i++)
+    {
+        std::vector<std::string> hosts = servers[i].getHosts();
+        std::vector<int> ports = servers[i].getPorts();    
+        bool hostMatch = false;
+        for (size_t j = 0; j < hosts.size(); j++)
+        {
+            if (hosts[j] == host)
+            {
+                hostMatch = true;
+                break;
+            }
+        }    
+        bool portMatch = false;
+        for (size_t k = 0; k < ports.size(); k++)
+        {
+            if (ports[k] == targetPort)
+            {
+                std::cout << "port target : " << ports[k] << std::endl;
+                portMatch = true;
+                break;
+            }
+        }   
+        if (hostMatch && portMatch)
+            return static_cast<int>(i);
+    }
+    return -1;
+}
+
+// adds socket "sfd" to epoll watch list.
+void ServerManager::addToEpoll(int sfd, int mode)
+{
+    struct epoll_event ev;
+    ev.events = mode;
+    ev.data.fd = sfd;
+    if (epoll_ctl(this->epoll_fd, EPOLL_CTL_ADD, sfd, &ev) == -1)
+        throw("Epoll_Ctl failed\n");/*shouldnt be a cancelaton point*/
+    set_nonblocking(sfd);
+}
+
+void ServerManager::establishServers()
+{
+    // creating passive sockets for each server.
+    for (size_t i = 0; i < servers.size(); ++i)
+    {
+        std::vector<std::string> hosts = servers[i].getHosts();
+        std::vector<int> ports = servers[i].getPorts();
+    
+        for (size_t h = 0; h < hosts.size(); ++h)
+        {
+            for (size_t p = 0; p < ports.size(); ++p)
+            {
+                struct sockaddr_in serverAddr;
+                int serverSocket = makePassiveSocket(&serverAddr);
+                if (serverSocket == -1)
+                    throw ("Error creating socket...\n"); /*this shouldnt be a cancelation point?*/
+                serverSockets.push_back(serverSocket);
+                // add the new socket to epoll watch list
+                addToEpoll(serverSocket, EPOLLIN);
+                std::cout << "Listening on " << hosts[h] << ":" << ports[p] << std::endl;
+            }
+        }
+    }
+}
+

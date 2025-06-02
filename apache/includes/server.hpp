@@ -8,21 +8,48 @@
 #include "Request.hpp"
 #include "AResponse.hpp"
 #include "Connection.hpp"
-
+#include "Location.hpp"
+#include "Iconnect.hpp"
 class Connection;
 class Server{
     private:
+        std::vector<int> serverSockets;
+        std::vector<int> _ports;
+        std::vector<std::string> _hosts;
+        std::vector<std::string> _serverNames;
+        size_t _clientMaxBodySize;
+        std::map <int, std::string> _errorPages;
+        std::vector<Location> _locations;
         std::map<std::string, std::string> statusCodes;
-        Server(Server& rhs);
-        Server& operator=(Server& rhs);
         bool loadedStatusCodes;
-        std::map<int, struct client> activity;
         t_InetData data;
         std::map <int, Connection*> clients;
     public:
         Server();
         ~Server(){
         }
+        
+        // new code to support multiple servers + config file.
+        
+        void setHost(const std::string &);
+        void setPort(int port);
+        void setServerName(const std::string &name);
+        void setClientMaxBodySize(size_t size);
+        void addErrorPage(int code, const std::string &path);
+        void addLocation(const Location &location);
+        //setters
+        std::vector<std::string> getHosts();
+        std::vector<int> getPorts() const;
+        std::vector<std::string> &getServerNames();
+        size_t getClientMaxBodySize() const;
+        const std::map<int, std::string> &getErrorPages() const;
+        const std::vector<Location> &getLocations() const;
+        void removePort(std::string port);
+        void removeHost(std::string host);
+        void print() const;
+        void establishServers();
+        // end of new code.
+    
         void handleReadEvent(int);
         void unBindTimedOutClients();
         void handleWriteEvent(int);
@@ -38,5 +65,3 @@ class Server{
         void sendBadRequest(int);
         bool clientWasRemoved(int);
 };
-
-// handle request : getRequest --> getResponse --> sendRespond

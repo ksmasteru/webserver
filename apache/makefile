@@ -3,10 +3,11 @@ CC := g++
 CFLAGS := -Wall -Wextra -Werror -std=c++98 -pedantic
 
 SRCS := utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
-reponse/Response.cpp \
+reponse/Response.cpp server/serverManager.cpp utils/trim.cpp \
 
-HEADERS := includes/AResponse.hpp  includes/Response.hpp includes/Iconnect.hpp \
-includes/server.hpp includes/utils.hpp includes/webserver.hpp
+HEADERS := includes/webserver.hpp includes/Response.hpp includes/Iconnect.hpp includes/AResponse.hpp \
+includes/server.hpp includes/utils.hpp includes/webserver.hpp includes/Location.hpp \
+includes/serverManager.hpp includes/ConfigParser.hpp includes/Location.hpp includes/Connection.hpp \
 
 OBJS := $(SRCS:.cpp=.o)
 

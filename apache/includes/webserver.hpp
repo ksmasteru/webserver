@@ -1,6 +1,7 @@
-#ifndef WEBSERVER_HPP
-#define WEBSERVER_HPP
-
+#pragma once
+#include <string>
+#define MAX_EVENTS 10
+#define BUFFER_SIZE 1024
 #include <iostream>
 #include <cstring>
 #include <unistd.h>
@@ -10,7 +11,6 @@
 #include <sys/epoll.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <string>
 #include <vector>
 #include <fstream>
 #include <sstream>
@@ -21,27 +21,17 @@
 #include <ctime>
 #include <sys/time.h>
 
-#define MAX_EVENTS 10
-#define BUFFER_SIZE 1024
-#define CLIENT_TIMEOUT 2
-#include <string>
-typedef std::map<std::string, std::string> dstring_map;
+
 typedef struct InetData{
     struct sockaddr_in server_fd, client_addr;
     socklen_t client_len;
     struct epoll_event event, events[MAX_EVENTS];
-    std::map<int, struct client> activity;
     int epollfd, clientfd;
     int sfd;
 }t_InetData;
 
-struct resp_h{
-    unsigned int clength; // content length
-    unsigned int totallength;
-    const char* keepAlive;
-    unsigned int status;
-    std::string contentType;
-    std::string extension;
-};
-
-#endif 
+#include "ServerManager.hpp"
+#include "Location.hpp"
+#include "ConfigParser.hpp"
+#include "Iconnect.hpp"
+#define CLIENT_TIMEOUT 3

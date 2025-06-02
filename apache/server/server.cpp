@@ -306,20 +306,101 @@ void Server::loadstatuscodes(const char* filepath)
     }
 }
 
-int main()
+void Server::setHost(const std::string &host)
 {
+    _hosts.push_back(host);
+}
+
+void Server::setPort(int port)
+{
+    if (port > 65535 || port < 1)
+        throw std::runtime_error("Error: Invalid port number: " + std::to_string(port));
+    _ports.push_back(port);
+}
+
+void Server::setServerName(const std::string &name) { _serverNames.push_back(name); }
+void Server::setClientMaxBodySize(size_t size) { _clientMaxBodySize = size; }
+void Server::addErrorPage(int code, const std::string &path) { _errorPages[code] = path; }
+void Server::addLocation(const Location &location) { _locations.push_back(location); }
+std::vector<std::string> Server::getHosts() { return _hosts; }
+std::vector<int> Server::getPorts() const { return _ports; }
+std::vector<std::string> &Server::getServerNames() { return _serverNames; }
+size_t Server::getClientMaxBodySize() const { return _clientMaxBodySize; }
+const std::map<int, std::string> &Server::getErrorPages() const { return _errorPages; }
+const std::vector<Location> &Server::getLocations() const { return _locations; }
+void Server::print() const
+{
+    std::cout << "Server:" << std::endl;
+    for (auto &host : _hosts)
+        std::cout << "  Host: " << host << std::endl;
+    for (int i = 0; i < _ports.size(); i++)
+        std::cout << "  Port: " << _ports[i] << std::endl;
+    for (const auto &name : _serverNames)
+        std::cout << "  Server Name: " << name << std::endl;
+        std::cout << "  Max Body Size: " << _clientMaxBodySize << std::endl;
+    if (!_errorPages.empty())
+    {
+        std::cout << "  Error Pages:" << std::endl;
+        for (const auto &page : _errorPages)
+        {
+            std::cout << "    " << page.first << " -> " << page.second << std::endl;
+        }
+    }
+    if (!_locations.empty())
+    {
+        std::cout << "  Locations:" << std::endl;
+        for (const auto &loc : _locations)
+        {
+            loc.print();
+        }
+    }
+}
+
+void Server::removePort(std::string port)
+{
+    for (int i = 0; i < _ports.size(); i++)
+    {
+        if (_ports[i] == stringToInt(port))
+            _ports.erase(_ports.begin() + i);
+    }
+}
+
+void Server::removeHost(std::string host)
+{
+    for (int i = 0; i < _hosts.size(); i++)
+    {
+        if (_hosts[i] == host)
+            _hosts.erase(_hosts.begin() + i);
+    }
+}
+
+bool isValidConfigFile(int ac, char **av)
+{
+    if (ac != 2)
+        return (false);
+    std::string filename = av[1];
+    // blabla.conf
+    std::cout << "filename ist " << filename << std::endl; 
+    size_t dot = filename.rfind(".", 0);
+    std::cout << "dot is " << dot << std::endl;
+    if (dot == std::string::npos)
+        return (false);
+    std::string extension = filename.substr(dot);
+    std::cout << "file extension ist " << extension << std::endl;
+    if (extension ==  ".conf")
+        return (true);
+    return (false);
+}
+
+int main(int ac, char **av)
+{
+    std::string confFile = "LOL";
+    if (!isValidConfigFile(ac, av))
+        return std::cerr << "Error: Config file must have a .conf extension" << std::endl, 1;
+    exit(1);
     Server apache;
-    try {
-        apache.establishServer();
-    }
-    catch (const char *error_msg)
-    {
-        std::cout << "error : " << error_msg << std::endl;
-    }
-    try{
-        apache.run();}
-    catch (const char *error_msg)
-    {
-        std::cout << "error : " << error_msg << std::endl;
-    }
+    ConfigParser configParser;
+    configParser.parse(confFile);
+    configParser.printConfig();
+    exit(1);
 }

@@ -1,6 +1,9 @@
 #pragma once
 
 #include "AResponse.hpp"
+#include <ctime>
+#include "Iconnect.hpp"
+#define BUFFER_SIZE 1024
 
 enum  ResponseState{
     sendingheader,

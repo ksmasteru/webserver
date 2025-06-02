@@ -1,11 +1,20 @@
 #pragma once
+
 #include "Request.hpp"
-#include "webserver.hpp"
 
 struct progress{
     int sentBytes;
     int sentTotal;
     int progress; // header sent   
+};
+
+struct resp_h{
+    unsigned int clength; // content length
+    unsigned int totallength;
+    const char* keepAlive;
+    unsigned int status;
+    std::string contentType;
+    std::string extension;
 };
 
 class  AResponse{
