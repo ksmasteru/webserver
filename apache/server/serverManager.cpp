@@ -78,9 +78,9 @@ void ServerManager::establishServers()
             for (size_t p = 0; p < ports.size(); ++p)
             {
                 struct sockaddr_in serverAddr;
-                int serverSocket = makePassiveSocket(&serverAddr);
+                int serverSocket = makePassiveSocket(&serverAddr, h, p);
                 if (serverSocket == -1)
-                    throw ("Error creating socket...\n"); /*this shouldnt be a cancelation point?*/
+                    throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
                 serverSockets.push_back(serverSocket);
                 // add the new socket to epoll watch list
                 addToEpoll(serverSocket, EPOLLIN);

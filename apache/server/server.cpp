@@ -380,27 +380,47 @@ bool isValidConfigFile(int ac, char **av)
         return (false);
     std::string filename = av[1];
     // blabla.conf
-    std::cout << "filename ist " << filename << std::endl; 
-    size_t dot = filename.rfind(".", 0);
-    std::cout << "dot is " << dot << std::endl;
+    std::cout << "filename ist " << filename << std::endl;
+    size_t dot = filename.rfind('.');
     if (dot == std::string::npos)
         return (false);
     std::string extension = filename.substr(dot);
-    std::cout << "file extension ist " << extension << std::endl;
-    if (extension ==  ".conf")
-        return (true);
-    return (false);
+    if (extension !=  ".conf")
+        return (false);
+    if (access(av[1], R_OK) == -1)
+    {
+        std::cout << "couldn't find config file" << std::endl;
+        return (false);
+    }
+    return (true);
 }
 
 int main(int ac, char **av)
 {
-    std::string confFile = "LOL";
+    if (ac != 2)
+        return 1;
+    std::string confFile = av[1];
     if (!isValidConfigFile(ac, av))
         return std::cerr << "Error: Config file must have a .conf extension" << std::endl, 1;
-    exit(1);
-    Server apache;
+    if (access(av[1], R_OK) == -1)
+    {
+        std::cout << "couldn't find config file" << std::endl;
+        return (1);
+    }
     ConfigParser configParser;
-    configParser.parse(confFile);
-    configParser.printConfig();
+    try {
+        configParser.parse(confFile);
+        configParser.printConfig();
+        ServerManager servManager(configParser.getServers());
+        servManager.establishServers();
+    }
+    catch (const char *msg)
+    {
+        std::cout << msg << std::endl;
+    }
+    catch (std::exception& e)
+    {
+        std::cout << e.what() << std::endl;
+    }
     exit(1);
 }
