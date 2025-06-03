@@ -85,6 +85,7 @@ void ServerManager::establishServers()
     {
         std::vector<std::string> hosts = servers[i].getHosts();
         std::vector<int> ports = servers[i].getPorts();
+        servers[i].setEpollfd(this->epoll_fd);
         for (size_t h = 0; h < hosts.size(); ++h)
         {
             for (size_t p = 0; p < ports.size(); ++p)
@@ -96,6 +97,7 @@ void ServerManager::establishServers()
                 serverSockets.push_back(serverSocket);
                 // add the new socket to epoll watch list
                 addToEpoll(serverSocket, EPOLLIN);
+                // add epollfd to servers
                 std::cout << "Listening on " << hosts[h] << ":" << ports[p] << std::endl;
             }
         }
@@ -120,6 +122,12 @@ void ServerManager::closeAllSockets()
         close (serverSockets[i]);
 }
 
+void ServerManager::closeTimedOutClients()
+{
+    for (size_t i = 0 ; i < servers.size(); i++)
+        servers[i].unBindTimedOutClients();
+}
+
 // epoll loop : handles connection on all servers sockets.
 // determine which server is targeted and what type of connection action it should take.
 // Each server handles its own clients tru  map<int, Connection*>
@@ -130,14 +138,13 @@ void ServerManager::run()
     int targetServer = -1;
     while (true)
     {
-        // TODO :: unbind clients here.
+        closeTimedOutClients();
         int num_events = epoll_wait(this->epoll_fd, this->epollEventsBuffer, MAX_EVENTS, -1);
         if (num_events == -1)
         {
             std::cout << "errno " << errno << std::endl;
             throw ("epoll_wait error\n");
         }
-        std::cout << "num of events is " << num_events << std::endl;
         // once process handles all connection  NO DUPLICATE fds.
         for (int i = 0; i < num_events; i++)
         {

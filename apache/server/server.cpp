@@ -119,7 +119,7 @@ void Server::handleReadEvent(int fd)
         throw ("recv failed");
     else if (readBytes == 0)
     {
-        std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;
+        //std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;
         return ;
     }
     if (readBytes > 0)
@@ -165,9 +165,9 @@ void Server::handleReadEvent(int fd)
         struct epoll_event event;
         event.events = EPOLLOUT | EPOLLERR;
         event.data.fd = fd;
-        if (epoll_ctl(data.epollfd, EPOLL_CTL_MOD, fd, &event) == -1)
+        if (epoll_ctl(this->getEpollfd(), EPOLL_CTL_MOD, fd, &event) == -1)
         {
-            close(data.epollfd); // Important: Close the epoll fd on error
+            close(this->getEpollfd()); // Important: Close the epoll fd on error
             throw("epoll_ctl");
         }
     }
@@ -361,6 +361,8 @@ void Server::setPort(int port)
     _ports.push_back(port);
 }
 
+void Server::setEpollfd(int _epollfd){ this->epollfd = _epollfd;}
+int  Server::getEpollfd(){return (this->epollfd);}
 void Server::setServerName(const std::string &name) { _serverNames.push_back(name); }
 void Server::setClientMaxBodySize(size_t size) { _clientMaxBodySize = size; }
 void Server::addErrorPage(int code, const std::string &path) { _errorPages[code] = path; }

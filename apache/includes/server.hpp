@@ -24,13 +24,15 @@ class Server{
         bool loadedStatusCodes;
         t_InetData data;
         std::map <int, Connection*> clients;
+        int epollfd;
     public:
         Server();
         ~Server(){
         }
         
         // new code to support multiple servers + config file.
-        
+        void setEpollfd(int);
+        int     getEpollfd();
         void setHost(const std::string &);
         void setPort(int port);
         void setServerName(const std::string &name);

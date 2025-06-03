@@ -122,7 +122,7 @@ void Response::sendHeader(const char *path, int cfd, bool redirection)
     //std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
     struct stat st;
     stat(path ,&st);
-    this->res_data.clength = st.st_size;
+    this->res_data.clength = st.st_size; // ! overflow
     //std::cout << "content length is " << this->res_data.clength << std::endl;
     std::string header = RspHeader(this->res_data.clength, this->res_data.status);
     int sent = send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL);
@@ -161,6 +161,9 @@ int Response::getFd(const char *path)
     openfile = true;
     return this->fd;
 }
+
+// when sending a video opt for chunked simply because it is hard to
+// store its content lenght in a variable --> overflow == closedCOnnection
 void Response::sendPage(const char *path, int cfd, bool redirection)
 {
     // you could at the start open the file and keep it open
@@ -168,7 +171,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     // you only close after timeout or response all sent.
     std::cout << "sending page of path " << path << std::endl;
     sentBytes = 0;
-    chunked = false;
+    chunked = true;
     if (this->getState() == sendingheader)
     {
         std::cout << "sending header" << std::endl;

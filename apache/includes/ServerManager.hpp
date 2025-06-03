@@ -37,4 +37,5 @@ public:
     void run();
     int getTargetServer(int);
     void closeAllSockets();
+    void closeTimedOutClients();
 };

@@ -55,3 +55,10 @@ A server that receives a request message with a
 // !!!handle client closing connection mid transfer : HARD
 
 //  if (evlist[i].events & EPOLLHUP || evlist[i].events & EPOLLERR)
+
+
+
+!!!!!!!!!!!! each server can have multiple sockets, currenct implentation only hanles one
+socket per server.
+
+!!!!!!!!!!!!!!!overflow of content length causes the connection to close // yes :: try with chunked
