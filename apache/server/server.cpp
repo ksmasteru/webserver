@@ -65,6 +65,37 @@ void Server::addNewClient()
     this->clients[client_fd] = new_client;
 }
 
+void Server::addNewClient(int epoll_fd, int socket_fd)
+{
+    std::cout <<  "epollfd: " << epoll_fd;
+    std::cout << " socket_fd "  << socket_fd << std::endl;
+    int client_fd = accept(socket_fd, NULL, 0);
+    // accept gives increasign values.
+    if (client_fd == -1)
+        throw ("client couldnt connect");
+    std::cout << "new connecion on socket " << socket_fd;
+    std::cout << " client id " << client_fd << std::endl;
+    // clear
+    struct timeval timeout;
+    // set starting time in client, time map close the connection if times exces 10.
+    timeout.tv_sec = 10;
+    timeout.tv_usec = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
+        throw std::runtime_error("setsockopt failed");
+    struct epoll_event event;
+    event.events = EPOLLIN | EPOLLHUP | EPOLLERR; // reading and error. 
+    event.data.fd = client_fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, client_fd, &event) == -1)
+        throw ("epoll_ctl fail");
+    set_nonblocking(client_fd);
+    // create a connection object and att it to <fd, connection>map;
+    struct timeval startTime;
+    gettimeofday(&startTime, nullptr);
+    Connection* new_client = new Connection(client_fd, startTime);
+    // makes no sense.
+    this->clients[client_fd] = new_client;  
+}
+
 void Server::removeClient(int   fd)
 {
     std::cout << "------------removing client of -----------" << fd << std::endl;
@@ -236,6 +267,18 @@ bool Server::clientWasRemoved(int toFind)
     }
     std::cout << "----------client was removed previously------------" << std::endl;
     return (true);
+}
+
+// checks if parameter is a CONNECTED client in the server
+bool Server::clientExist(int cfd)
+{
+    std::map<int, Connection*>::iterator it;
+    for (it = clients.begin(); it != clients.end(); ++it)
+    {
+        if (it->first == cfd)
+            return (true);
+    }
+    return (false);
 }
 
 int Server::run()
@@ -413,6 +456,7 @@ int main(int ac, char **av)
         configParser.printConfig();
         ServerManager servManager(configParser.getServers());
         servManager.establishServers();
+        servManager.run();
     }
     catch (const char *msg)
     {
@@ -422,5 +466,4 @@ int main(int ac, char **av)
     {
         std::cout << e.what() << std::endl;
     }
-    exit(1);
 }

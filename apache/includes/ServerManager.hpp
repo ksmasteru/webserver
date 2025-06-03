@@ -4,6 +4,7 @@
 #include "server.hpp"
 #include "Iconnect.hpp"
 
+// handles epoll :
 class ServerManager
 {
 private:
@@ -14,9 +15,10 @@ public:
     std::vector<int> serverSockets;
     std::map<int, Connection *> clients;
     int epoll_fd;
-
+    struct epoll_event epollEventsBuffer[MAX_EVENTS];
     ServerManager(std::vector<Server> &Servers);
-    bool isServerSocket(int fd);
+    //bool isServerSocket(int fd);
+    int isServerSocket(int fd);
     int findServerIndex(std::string host, std::string port, std::vector<Server> servers);
     void establishServers();
     void addToEpoll(int fd, int mode);
@@ -32,4 +34,7 @@ public:
             exit(EXIT_FAILURE);
         }
     }
+    void run();
+    int getTargetServer(int);
+    void closeAllSockets();
 };

@@ -46,8 +46,8 @@ class Server{
         const std::vector<Location> &getLocations() const;
         void removePort(std::string port);
         void removeHost(std::string host);
-        void print() const;
-        void establishServers();
+        void print() const; 
+        void addNewClient(int, int);
         // end of new code.
     
         void handleReadEvent(int);
@@ -64,4 +64,5 @@ class Server{
         void parseRequest(const std::string& request, std::map<int, std::string>& map);
         void sendBadRequest(int);
         bool clientWasRemoved(int);
+        bool clientExist(int);
 };

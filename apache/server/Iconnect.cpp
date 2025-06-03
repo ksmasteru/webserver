@@ -68,7 +68,8 @@ int makePassiveSocket(struct sockaddr_in *server_addr)
     return server_fd;
 }
 
-int makePassiveSocket(struct sockaddr_in *server_addr, int h, int p)
+// pass in the actual host:port combo.
+int makePassiveSocket(struct sockaddr_in *server_addr, std::string host, int port)
 {
     int server_fd;
     // double loop test each host on ports...
@@ -83,13 +84,19 @@ int makePassiveSocket(struct sockaddr_in *server_addr, int h, int p)
 
     std::memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
-    server_addr->sin_addr.s_addr = INADDR_ANY;
-    server_addr->sin_port = htons(SERVER_PORT);
-
+    //server_addr->sin_addr.s_addr = INADDR_ANY;
+    server_addr->sin_port = htons(port);
+    if (inet_pton(AF_INET, host.c_str(), &(server_addr->sin_addr)) <= 0)
+    {
+        perror("Invalid address");
+        close(server_fd);
+        return -1;
+    }
     if (bind(server_fd, (struct sockaddr *)server_addr, sizeof(*server_addr)) == -1)
     {
-        std::cerr << "Error binding socket" << std::endl;
-        return -1;
+        std::cerr << "Error binding socket port: " << port << std::endl;
+        std::cerr <<  "host " << host << std::endl;
+        return -1; /*Should be a cancelation point ?*/
     }
 
     if (listen(server_fd, SOMAXCONN) == -1)
@@ -97,27 +104,8 @@ int makePassiveSocket(struct sockaddr_in *server_addr, int h, int p)
         std::cerr << "Error listening on socket" << std::endl;
         return -1;
     }
-
-    std::cout << "Server listening on port " << SERVER_PORT << std::endl;
-
+    //std::cout << "Server listening on port " << SERVER_PORT << std::endl;
     set_nonblocking(server_fd);
     return server_fd;
 }
 
-void manage_timeout(std::map<int , struct client> &activity){
-    while (1)
-    { for (auto it = activity.begin(); it != activity.end();) {
-                if (it->second.start)
-        if (time(NULL) - it->second.timestamp > 5) {
-            std::cout << it->second.timestamp << std::endl;
-            std::cout << "closing connection from timout_thread" << std::endl; 
-            close(it->first);
-            it = activity.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-}

@@ -10,6 +10,7 @@ ServerManager::ServerManager(std::vector<Server> &Servers) : servers(Servers)
         throw ("epoll create error");
 }
 
+/*
 bool ServerManager::isServerSocket(int fd)
 {
     size_t lent = this->serverSockets.size();
@@ -19,6 +20,18 @@ bool ServerManager::isServerSocket(int fd)
             return (true);
     }
     return (false);
+}*/
+
+// return id of the server whose socket match the paramter
+// returns -1 on failure
+int ServerManager::isServerSocket(int fd)
+{
+    for (int i = 0; i < serverSockets.size(); i++)
+    {
+         if (serverSockets[i] == fd)
+            return (i);
+    }
+    return (-1);
 }
 
 // determine which server will have to handle the host port request combo.
@@ -72,13 +85,12 @@ void ServerManager::establishServers()
     {
         std::vector<std::string> hosts = servers[i].getHosts();
         std::vector<int> ports = servers[i].getPorts();
-    
         for (size_t h = 0; h < hosts.size(); ++h)
         {
             for (size_t p = 0; p < ports.size(); ++p)
             {
                 struct sockaddr_in serverAddr;
-                int serverSocket = makePassiveSocket(&serverAddr, h, p);
+                int serverSocket = makePassiveSocket(&serverAddr, hosts[h], ports[p]);
                 if (serverSocket == -1)
                     throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
                 serverSockets.push_back(serverSocket);
@@ -90,3 +102,76 @@ void ServerManager::establishServers()
     }
 }
 
+// iterate each server's connected clients to find who matches
+// the parameter fd : return server id on success ; -1 on error
+int ServerManager::getTargetServer(int client_fd)
+{
+    for (size_t i = 0; i < servers.size(); i++)     
+    {
+        if (servers[i].clientExist(client_fd))
+            return (i);
+    }
+    return (-1);
+}
+
+void ServerManager::closeAllSockets()
+{
+    for (size_t i = 0; i < servers.size(); i++)
+        close (serverSockets[i]);
+}
+
+// epoll loop : handles connection on all servers sockets.
+// determine which server is targeted and what type of connection action it should take.
+// Each server handles its own clients tru  map<int, Connection*>
+void ServerManager::run()
+{
+    std::cout << "Server manager is running..." << std::endl;
+    int serverIndex = -1;
+    int targetServer = -1;
+    while (true)
+    {
+        // TODO :: unbind clients here.
+        int num_events = epoll_wait(this->epoll_fd, this->epollEventsBuffer, MAX_EVENTS, -1);
+        if (num_events == -1)
+        {
+            std::cout << "errno " << errno << std::endl;
+            throw ("epoll_wait error\n");
+        }
+        std::cout << "num of events is " << num_events << std::endl;
+        // once process handles all connection  NO DUPLICATE fds.
+        for (int i = 0; i < num_events; i++)
+        {
+            // check if connection happens on server socket.
+            if ((serverIndex = isServerSocket(epollEventsBuffer[i].data.fd)) != -1)
+            {
+                // try catch this ?
+                this->servers[serverIndex].addNewClient(this->epoll_fd, this->serverSockets[serverIndex]);
+                continue;
+            }
+            // determine which server has to handle this
+            if ((targetServer = getTargetServer(epollEventsBuffer[i].data.fd)) == -1) /*how can this fail ?*/
+            {
+                std::cout << "couldnt find a matching client in all servers : ";
+                std::cout << epollEventsBuffer[i].data.fd << std::endl;
+                continue ;
+            }
+            else if (epollEventsBuffer[i].events & EPOLLIN)
+            {
+                this->servers[targetServer].handleReadEvent(epollEventsBuffer[i].data.fd);
+            }
+            else if (epollEventsBuffer[i].events & EPOLLOUT)
+            {
+                this->servers[targetServer].handleWriteEvent(epollEventsBuffer[i].data.fd);
+            }
+            else if (epollEventsBuffer[i].events & EPOLLHUP ||
+                epollEventsBuffer[i].events & EPOLLERR)
+            {
+                this->servers[targetServer].handelSocketError(epollEventsBuffer[i].data.fd);
+            }
+        }
+        // close all sockets
+    }
+    // also you should CLOSE ALL CLIENTS and open files.
+    closeAllSockets();
+    close(this->epoll_fd);
+}
