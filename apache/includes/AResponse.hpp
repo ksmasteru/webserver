@@ -9,8 +9,8 @@ struct progress{
 };
 
 struct resp_h{
-    unsigned int clength; // content length
-    unsigned int totallength;
+    long long clength; // content length
+    long long totallength;
     const char* keepAlive;
     unsigned int status;
     std::string contentType;

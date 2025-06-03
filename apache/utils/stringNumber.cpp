@@ -16,6 +16,13 @@ unsigned long stringToLong(const std::string& str)
     return (num); 
 }
 
+std::string longlongToString(long long value)
+{
+    std::ostringstream oss;
+    oss << value;
+    return (oss.str());
+}
+
 std::string intToString(int value) {
     std::ostringstream oss;
     oss << value;

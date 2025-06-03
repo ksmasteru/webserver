@@ -12,6 +12,7 @@ unsigned long stringToLong(const std::string& str);
 std::string generateUniqueFilename();
 double stringToDouble(const std::string& str);
 unsigned long hexStringToLong(const std::string& hexStr);
+std::string longlongToString(long long value);
 
 // trim.cpp
 void trim(std::string& str);

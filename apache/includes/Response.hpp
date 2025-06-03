@@ -28,7 +28,7 @@ class Response : public AResponse
         void    getFileReady(int fd);
         std::string getTime();
         std::string makeRspHeader();
-        std::string RspHeader(unsigned int cLength, unsigned int code);
+        std::string RspHeader(long long cLength, unsigned int code);
         std::string RspStatusline(unsigned int code); 
         std::string requestPageBody(const char* path);
         void    sendHeader(const char *, int, bool);
