@@ -461,16 +461,14 @@ bool isValidConfigFile(int ac, char **av)
 
 int main(int ac, char **av)
 {
-    if (ac != 2)
-        return 1;
-    std::string confFile = av[1];
-    if (!isValidConfigFile(ac, av))
-        return std::cerr << "Error: Config file must have a .conf extension" << std::endl, 1;
-    if (access(av[1], R_OK) == -1)
-    {
-        std::cout << "couldn't find config file" << std::endl;
-        return (1);
-    }
+    std::string confFile = (ac == 2) ? av[1] : "/home/ayoub/had/webserver/apache/webserv.conf";
+    // if (!isValidConfigFile(ac, av))
+        // return std::cerr << "Error: Config file must have a .conf extension" << std::endl, 1;
+    // if (access(confFile.c_str(), R_OK) == -1)
+    // {
+    //     std::cout << "couldn't find config file" << std::endl;
+    //     return (1);
+    // }
     ConfigParser configParser;
     try {
         configParser.parse(confFile);
