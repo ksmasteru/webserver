@@ -23,6 +23,7 @@
 class Location {
 private:
     std::string _path;
+    std::string _type; // new
     std::string _root;
     std::string _index;
     std::string _uploadPath;
@@ -31,12 +32,14 @@ private:
     bool _autoindex;
     std::vector<std::string> _allowedMethods;
     std::map<int, std::string> redirections;
+    bool _directoryListing;
 
 public:
-    Location() : _autoindex(false) {}
+    Location() : _autoindex(false), _directoryListing(false) {}
     
     void setPath(const std::string& path) { _path = path; }
     void setRoot(const std::string& root) { _root = root; }
+    void setType(const std::string& type) { _type = type;}
     void setIndex(const std::string& index) { _index = index; }
     void setUploadPath(const std::string& path) { _uploadPath = path; }
     void setCgiExtension(const std::string& ext) { _cgiExtension = ext; }
@@ -52,6 +55,7 @@ public:
     // Getters
     std::string& getPath() { return _path; }
     std::string& getRoot() { return _root; }
+    std::string& getType() { return _type; }
     const std::string& getIndex() const { return _index; }
     const std::string& getUploadPath() const { return _uploadPath; }
     const std::string& getCgiExtension() const { return _cgiExtension; }
@@ -64,6 +68,7 @@ public:
     void print() const {
         std::cout << "  Location: " << _path << std::endl;
         std::cout << "    Root: " << _root << std::endl;
+        std::cout << "Type: " << _type << std::endl;
         std::cout << "    Index: " << _index << std::endl;
         std::cout << "    Autoindex: " << (_autoindex ? "on" : "off") << std::endl;
         if (!_uploadPath.empty())

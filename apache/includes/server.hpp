@@ -18,8 +18,8 @@ class Server{
         std::vector<std::string> _hosts;
         std::vector<std::string> _serverNames;
         size_t _clientMaxBodySize;
-        std::map <int, std::string> _errorPages;
-        std::vector<Location> _locations;
+        std::map <int, std::string> _errorPages; // new
+        std::vector<Location> _locations; // new 
         std::map<std::string, std::string> statusCodes;
         bool loadedStatusCodes;
         t_InetData data;
