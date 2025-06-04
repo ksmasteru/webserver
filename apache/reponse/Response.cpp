@@ -60,7 +60,7 @@ std::string Response::getTime()
     
 }
 
-std::string Response::RspHeader(unsigned int cLength, unsigned int code)
+std::string Response::RspHeader(long long cLength, unsigned int code)
 {
     std::string alive = "keep-alive"; // will be set later;
     std::ostringstream header;
@@ -71,7 +71,7 @@ std::string Response::RspHeader(unsigned int cLength, unsigned int code)
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
             //<< "Transfer-Encoding: chunked \r\n"
-            << "Content-Length: " + intToString(cLength) + " \r\n"
+            << "Content-Length: " + longlongToString(cLength) + " \r\n"
             << "Connection: " + alive + " \r\n"
             << "\r\n";
     }
@@ -124,13 +124,22 @@ void Response::sendHeader(const char *path, int cfd, bool redirection)
     stat(path ,&st);
     this->res_data.clength = st.st_size; // ! overflow
     //std::cout << "content length is " << this->res_data.clength << std::endl;
+    if (this->res_data.clength > INT16_MAX)
+        chunked = true;
+    else
+        chunked = false;
     std::string header = RspHeader(this->res_data.clength, this->res_data.status);
     int sent = send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL);
     // header is guaranted to be less than buffer size.
     if (sent == -1)
-        throw ("sending heade error");
+    {
+        this->state = ResponseDone;
+        close(this->fd);
+        openfile = false;
+        throw (cfd);
+    }
     sentBytes += sent;
-    std::cout << "sent " << sent << std::endl;
+    //std::cout << "sent " << sent << std::endl;
     // setting new stat for the response
     this->state = sendingBody;
 }
@@ -141,14 +150,21 @@ void Response::getFileReady(int fd)
     if (new_offset == -1)
         throw ("bad file seek");
 }
+
 void Response::sendChunkHeader (int cfd, int readBytes)
 {
     std::stringstream ss;
     ss << std::hex << readBytes << "\r\n";  // Convert to hexadecimal
     std::string hexStr = ss.str();
-    std::cout << "chunked header " << hexStr << "size of header" << hexStr.length() <<std::endl;
-    if (send(cfd, hexStr.c_str(), hexStr.length(), 0) == -1)
-        throw ("bad send");
+    //std::cout << "chunked header " << hexStr << "size of header" << hexStr.length() <<std::endl;
+    if (send(cfd, hexStr.c_str(), hexStr.length(), MSG_NOSIGNAL) == -1)
+    {
+        close (this->fd);
+        openfile = false;
+        this->state = ResponseDone;
+        std::cout << "closing connection on socket " << cfd << std::endl;
+        throw (cfd);
+    }
 }
 
 int Response::getFd(const char *path)
@@ -169,12 +185,10 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     // you could at the start open the file and keep it open
     // this way you dont have to lseek or multiple open close.
     // you only close after timeout or response all sent.
-    std::cout << "sending page of path " << path << std::endl;
     sentBytes = 0;
-    chunked = true;
     if (this->getState() == sendingheader)
     {
-        std::cout << "sending header" << std::endl;
+        //std::cout << "sending header" << std::endl;
         sendHeader(path, cfd, redirection);
     }
     int R_BUFF = BUFFER_SIZE - sentBytes;
@@ -186,7 +200,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
         throw ("read fail");
-    std::cout <<  "readbytes are " << readbytes << std::endl;
+    //std::cout <<  "readbytes are " << readbytes << std::endl;
     if (chunked)
         sendChunkHeader(cfd, readbytes);
     int sent = send(cfd,  buffer, readbytes, MSG_NOSIGNAL);
@@ -194,20 +208,28 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     {
         close (fd);
         openfile = false;
+        this->state = ResponseDone;
         throw ("send fail 1");
     }
     fileOffset += sent;
     if (chunked)
-        send(cfd, "\r\n", 2, MSG_NOSIGNAL); 
+        if (send(cfd, "\r\n", 2, MSG_NOSIGNAL) == -1)
+        {
+            std::cout << "closing connection on " << cfd << std::endl;
+            this->openfile = false;
+            this->state = ResponseDone;
+            close (fd);
+            throw (cfd);
+        } 
     if (readbytes < R_BUFF || readbytes == 0)
     {
         this->state = ResponseDone;
-        close(fd); // reason of increasing fd values ?
+        close(fd);
         if (chunked)
             send(cfd, "0\r\n\r\n", 5, 0);
     }
     // reset timer of clients.
-    std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
+    //std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
 }
 
 /*to avoid client closing the connection ; which
@@ -255,12 +277,12 @@ void Response::handleErrorPage(const char *path, int cfd)
 void Response::makeResponse(int cfd, Request* req)
 {
     this->_request = req;
-    std::cout << "make response called" << std::endl;
+    //std::cout << "make response called" << std::endl;
     std::string path = "pages" + req->getRequestPath();
     this->res_data.status = 200;
     if (path.compare("pages/") == 0)
     {
-        std::cout << "index page" << std::endl;
+        //std::cout << "index page" << std::endl;
         sendPage("pages/index.html", cfd, true);
     }
     else if (access(path.c_str(),R_OK) == 0)
@@ -341,7 +363,7 @@ void Response::deleteResponse(int cfd, Request* req)
                 << "\r\n";
             if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
                 throw ("send Error");
-            break;Add commentMore actions
+            break;
         default:
             break;
     }

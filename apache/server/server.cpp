@@ -202,12 +202,26 @@ void Server::handleWriteEvent(int fd)
     // too big of a file : state -> sending body :
     // attributees of response .
     // handling get first.
-    if (clients[fd]->request.getType().compare("GET") == 0)
-        clients[fd]->response.makeResponse(fd, &clients[fd]->request);
-    else if (clients[fd]->request.getType().compare("POST") == 0)
-        clients[fd]->response.successPostResponse(fd);
-    else if (clients[fd]->request.getType().compare("DELETE") == 0)
-        clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
+    try
+    {
+        if (clients[fd]->request.getType().compare("GET") == 0)
+            clients[fd]->response.makeResponse(fd, &clients[fd]->request);
+        else if (clients[fd]->request.getType().compare("POST") == 0)
+            clients[fd]->response.successPostResponse(fd);
+        else if (clients[fd]->request.getType().compare("DELETE") == 0)
+            clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
+    }
+    catch (int cfd) // if a send opeartion fails immmediately close the connection.
+    {
+        std::cout << "handling connection failre on " << cfd << std::endl;
+        removeClient(cfd);
+        return ;
+    }
+    catch (const char *msg) // this should be handled
+    {
+        std::cout << msg << std::endl;
+        exit(1);
+    }
     // reset timeout timer
     clients[fd]->resetTime();
     if (clients[fd]->response.getState() == ResponseDone /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
