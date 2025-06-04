@@ -26,11 +26,11 @@ bool ServerManager::isServerSocket(int fd)
 // returns -1 on failure
 int ServerManager::isServerSocket(int fd)
 {
-    for (int i = 0; i < serversSockets.size(); i++)
+    for (int i = 0; i < servers.size(); i++)
     {
-        for(int j = 0; j < serversSockets[i].size(); j++)
+        for (int j = 0; j < servers[i].serverSockets.size(); j++)
         {
-            if (serversSockets[i][j] == fd)
+            if (servers[i].serverSockets[j] == fd)
                 return i;
         }
     }
@@ -96,21 +96,19 @@ void ServerManager::establishServers()
         servers[i].setEpollfd(this->epoll_fd);
         for (size_t h = 0; h < hosts.size(); ++h)
         {
-            std::vector<int> sockets;
             for (size_t p = 0; p < ports.size(); ++p)
             {
                 struct sockaddr_in serverAddr;
                 int serverSocket = makePassiveSocket(&serverAddr, hosts[h], ports[p]);
                 if (serverSocket == -1)
                     throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
+                servers[i].serverSockets.push_back(serverSocket); // added easy to manage | each server knows his sockets
                 serverSockets.push_back(serverSocket);
-                sockets.push_back(serverSocket);
                 // add the new socket to epoll watch list
                 addToEpoll(serverSocket, EPOLLIN);
                 // add epollfd to servers
                 std::cout << "Listening on " << hosts[h] << ":" << ports[p] << std::endl;
             }
-            serversSockets.push_back(sockets);
         }
     }
 }

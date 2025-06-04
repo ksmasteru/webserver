@@ -13,7 +13,6 @@
 class Connection;
 class Server{
     private:
-        std::vector<int> serverSockets;
         std::vector<int> _ports;
         std::vector<std::string> _hosts;
         std::vector<std::string> _serverNames;
@@ -30,6 +29,7 @@ class Server{
         ~Server(){
         }
         
+        std::vector<int> serverSockets;
         // new code to support multiple servers + config file.
         void setEpollfd(int);
         int     getEpollfd();
