@@ -59,21 +59,18 @@ void Cgi::load_into_envp()
     // Fix: Get content length from request, not response
     std::ostringstream oss;
     if (req->getType() == "POST") {
-        // Assuming Request class has a method to get content length
-        // You may need to adjust this based on your Request class implementation
-        oss << this->res->getResData().clength; // or however you get content length from request
+        
+        oss << this->res->getResData().clength; 
     } else {
         oss << "0";
     }
     envs.push_back("CONTENT_LENGTH=" + oss.str());
 
-    // Fix: Get content type from request headers, not response
     oss << this->res->getResData().contentType;
     envs.push_back("CONTENT_TYPE=" + oss.str());
 
 
 
-    // Add all HTTP headers
     for (const auto& [k, v] : req->getHeaders()) {
         std::string key = k;
         for (size_t i = 0; i < key.size(); ++i)
@@ -96,11 +93,10 @@ void Cgi::determine_interpreter()
         else if (ext == "php") interpreter = "/usr/bin/php";
         else if (ext == "pl") interpreter = "/usr/bin/perl";
         else if (ext == "rb") interpreter = "/usr/bin/ruby";
-        else if (ext == "sh") interpreter = "/bin/bash";  // Add shell script support
+        else if (ext == "sh") interpreter = "/bin/bash";  
         else interpreter.clear();
     } else {
-        // Handle executables without extension
-        // Check if file is executable
+   
         if (access(scriptPath.c_str(), X_OK) == 0) {
             interpreter.clear(); // Direct execution
         }
@@ -142,7 +138,6 @@ void Cgi::execute_child_process()
         char* args[] = { const_cast<char*>(interpreter.c_str()), const_cast<char*>(scriptPath.c_str()), NULL };
         execve(interpreter.c_str(), args, envp);
     } else {
-        // Direct execution for executables without extension or .sh files
         char* args[] = { const_cast<char*>(scriptPath.c_str()), NULL };
         execve(scriptPath.c_str(), args, envp);
     }

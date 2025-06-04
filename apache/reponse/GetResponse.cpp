@@ -326,7 +326,6 @@ void GetResponse::deleteResponse(int cfd, Request* req)
 
 bool GetResponse::isCgiScript(const std::string& requestPath)
 {
-    // Get file extension
     size_t lastDot = requestPath.find_last_of('.');
     if (lastDot == std::string::npos) {
         return false;
@@ -334,38 +333,29 @@ bool GetResponse::isCgiScript(const std::string& requestPath)
     
     std::string extension = requestPath.substr(lastDot);
     
-    // Check for CGI script extensions (nginx commonly supports these)
-    return (extension == ".py" ||   // Python
-            extension == ".pl" ||   // Perl
-            extension == ".php" ||  // PHP
-            extension == ".rb" ||   // Ruby
-            extension == ".sh" ||   // Shell script
-            extension == ".cgi");   // Generic CGI
+    return (extension == ".py" ||
+            extension == ".pl" ||
+            extension == ".php" ||
+            extension == ".rb" ||
+            extension == ".sh" ||
+            extension == ".cgi");
 }
 
-/**
- * Handle CGI request execution
- * Follows nginx's CGI handling approach
- */
 void GetResponse::handleCgiRequest(const std::string& scriptPath, int cfd, Request* req)
 {
     try {
-        // Validate script exists and is executable
         if (access(scriptPath.c_str(), X_OK) != 0) {
             std::cout << "CGI script not executable: " << scriptPath << std::endl;
-            this->res_data.status = 403; // Forbidden
+            this->res_data.status = 403;
             return handleErrorPage(scriptPath.c_str(), cfd);
         }
         
-        // Create CGI handler with timeout (nginx default is 60 seconds)
         Cgi cgiHandler(req, this, scriptPath, 60);
         
         std::cout << "Executing CGI script: " << scriptPath << std::endl;
         
-        // Execute the CGI script
         cgiHandler.execute_cgi();
         
-        // Handle CGI output
         cgiHandler.handle_cgi_output();
         
         if (this->isCgiResponse()) {
@@ -383,27 +373,22 @@ void GetResponse::handleCgiRequest(const std::string& scriptPath, int cfd, Reque
         std::string error_msg = e.what();
         
         if (error_msg.find("timeout") != std::string::npos) {
-            this->res_data.status = 504; // Gateway Timeout
+            this->res_data.status = 504;
         } else if (error_msg.find("not found") != std::string::npos || 
                    error_msg.find("No such file") != std::string::npos) {
-            this->res_data.status = 404; // Not Found
+            this->res_data.status = 404;
         } else if (error_msg.find("Permission denied") != std::string::npos) {
-            this->res_data.status = 403; // Forbidden
+            this->res_data.status = 403;
         } else {
-            this->res_data.status = 500; // Internal Server Error
+            this->res_data.status = 500;
         }
         
         handleErrorPage(scriptPath.c_str(), cfd);
     }
 }
 
-/**
- * Send CGI response to client
- * Nginx-style response handling
- */
 void GetResponse::sendCgiResponse(int cfd)
 {
-
     std::string httpResponse = this->buildCgiResponse();
     if (httpResponse.empty()) {
         std::cout << "Empty CGI response, sending 500 error" << std::endl;
@@ -443,31 +428,22 @@ void GetResponse::sendCgiResponse(int cfd)
     std::cout << "CGI response sent: " << totalSent << "/" << responseSize << " bytes" << std::endl;
 }
 
-/**
- * Validate CGI script before execution
- * Security checks similar to nginx
- */
 bool GetResponse::validateCgiScript(const std::string& scriptPath)
 {
-    // Check if file exists
     if (access(scriptPath.c_str(), F_OK) != 0) {
         std::cout << "CGI script not found: " << scriptPath << std::endl;
         return false;
     }
     
-    // Check if file is readable
     if (access(scriptPath.c_str(), R_OK) != 0) {
         std::cout << "CGI script not readable: " << scriptPath << std::endl;
         return false;
     }
     
-    // Check if file is executable (required for CGI)
     if (access(scriptPath.c_str(), X_OK) != 0) {
         std::cout << "CGI script not executable: " << scriptPath << std::endl;
         return false;
     }
-    
- 
     
     return true;
 }

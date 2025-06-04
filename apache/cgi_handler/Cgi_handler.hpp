@@ -23,7 +23,7 @@ class Cgi
 private:
     char **envp;
     int pid;
-    int fds[2];  // pipe
+    int fds[2];  
     Request *req;
     AResponse *res;
     static const int DEFAULT_CGI_TIMEOUT = 60;
@@ -50,4 +50,4 @@ public:
     void handle_cgi_output();
 };
 
-#endif // CGI_HPP
+#endif /
