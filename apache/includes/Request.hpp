@@ -18,14 +18,7 @@ enum Chunk_State{
     chunk_done
 };
 
-    /*
-        7\r\n
-        Mozilla\r\n
-        11\r\n
-        Developer Network\r\n
-        0\r\n
-        \r\n
-    */
+
 
 enum mainState{
     ReadingRequestHeader,
@@ -76,6 +69,7 @@ typedef struct s_FILE{
 class  Request{ // read event.
     std::string RawRequest;
     std::string type;
+    std::string fullpath;
     std::string qkey;
     t_FILE  RequestFile;
     bool openRequestFile;
@@ -88,21 +82,25 @@ class  Request{ // read event.
     int totalReadBytes;
     int _bytesread;
     bool keep_alive;
-
-    // post request
     int Postfd;
     int totLent;
 
     std::string targetUri;
     std::map<std::string, std::string> queries;
-    std::map<std::string, std::string> headers;
     Request(Request& rhs, int bytesread);
     Request& operator=(Request& rhs);
     std::map<int, std::string> parse_map;
+    std::map<std::string, std::string> headers;
+
     public:
     Request();
     std::string getHttpVersion();
     void    setUpPostFile();
+    const std::map<std::string, std::string>& getHeaders() const {
+
+        return headers;
+
+    }
     void addtoheaders(std::string& key, std::string& val);
     std::string getRequestPath();
     const std::string& getRawRequest() const;
@@ -134,5 +132,6 @@ class  Request{ // read event.
     void    chunkedBody(char *, int, int);
     int     getPostFd();
     std::string getExtension();
+    std::string getfullpath();
     ~Request(){}
 };

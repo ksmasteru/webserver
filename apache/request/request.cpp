@@ -71,7 +71,7 @@ void Request::printRequestLine()
 void Request::printHeaderFields()
 {
     for (auto it = headers.begin(); it != headers.end(); ++it)
-        std::cout << it->first << ": " << it->second << std::endl;
+        std::cout << "HH" << it->first << ": " << it->second << std::endl;
 }
 bool unvalidheaderVal(std::string& val)
 {
@@ -85,10 +85,15 @@ bool unvalidheaderVal(std::string& val)
     return (false);
 }
 
+std::string Request::getfullpath()
+{
+    return this->fullpath;
+}
 void Request::parseRequestHeader(char* request, int readBytes)
 {
     // each time enters with a new char buffer
     char c;
+    this->fullpath = request;
     int offset = 0;
     std::string fieldname, fieldvalue;
     _bytesread = readBytes;
@@ -230,7 +235,7 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
                             break;
                         default:
                             throw("Bad Request method name\n");
-                    }
+                    } 
                     if (this->type.empty())
                         throw("bad request name\n"); 
                     this->SubState = after_method_space;
@@ -567,7 +572,16 @@ std::string Request::getExtension()
     if (headers.find("Content-Type") != headers.end())
         extension = headers["Content-Type"];
     else
-        return extension;
+        try
+        {
+           return this->getRequestPath().substr(this->getRequestPath().rfind('.'));
+
+        }
+        catch(const std::exception& e)
+        {
+            return "no extension";
+        }
+        
     std::map<std::string, std::string> contentMap = {
     {"text/html", ".html"},
     {"image/png", ".ico"},
@@ -618,13 +632,7 @@ std::string Request::getRequestPath()
 
 bool Request::isAlive()
 {
-    if (headers.find("Connection") != headers.end()
-        && headers["Connection"] == "keep-alive") /*case sensitive*/
-    {
-        std::cout << "Client is Staying alive...!!!" << std::endl;
-        return (true);
-    }
-    return (false);
+    return (this->keep_alive);
 }
 
 std::string Request::getHttpVersion(){

@@ -3,8 +3,9 @@
 #include "../includes/Iconnect.hpp"
 #define STATUS_PATH "/home/hes-saqu/Desktop/webserver/apache/server/codes.txt"
 #include "../includes/AResponse.hpp"
-#include "../includes/Response.hpp"
+#include "../includes/GetResponse.hpp"
 #include <fstream>
+#include <sys/wait.h>
 
 Server::Server()
 {
@@ -36,14 +37,12 @@ int Server::establishServer()
     */return (0);
 }
 
-/*testing : changing epoll watchlist.*/
 void Server::addNewClient()
 {
     int client_fd = accept(data.sfd, NULL, 0);
-    // accept gives increasign values.
     if (client_fd == -1)
         throw ("client couldnt connect");
-    std::cout << "new client Connected : id " << client_fd << std::endl;
+    std::cout << "new client Connected " << std::endl;
     // clear
     struct timeval timeout;
     // set starting time in client, time map close the connection if times exces 10.
@@ -52,25 +51,14 @@ void Server::addNewClient()
     if (setsockopt(data.sfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
         throw std::runtime_error("setsockopt failed");
     struct epoll_event event;
-    event.events = EPOLLIN | EPOLLHUP | EPOLLERR; // reading and error. 
+    event.events = EPOLLIN | EPOLLOUT | EPOLLERR; 
     event.data.fd = client_fd;
     if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
         throw ("epoll_ctl fail");
     set_nonblocking(client_fd);
     // create a connection object and att it to <fd, connection>map;
-    struct timeval startTime;
-    gettimeofday(&startTime, nullptr);
-    Connection* new_client = new Connection(client_fd, startTime);
-    // makes no sense.
+    Connection* new_client = new Connection(client_fd, timeout);
     this->clients[client_fd] = new_client;
-}
-
-void Server::removeClient(int   fd)
-{
-    std::cout << "------------removing client of -----------" << fd << std::endl;
-    close(fd);
-    delete clients[fd];
-    clients.erase(fd);
 }
 
 void Server::handleReadEvent(int fd)
@@ -78,24 +66,15 @@ void Server::handleReadEvent(int fd)
     //std::cout << "new read event for fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
-        //std::cout << "client of fd: " << fd << " was not found" << std::endl;
+        std::cout << "client of fd: " << fd << " was not found" << std::endl;
         return ;
     }
     char buffer[BUFFER_SIZE];
     // receiv.
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
+    std::cout << "\n" << buffer << "\n";
     if (readBytes == -1)
         throw ("recv failed");
-    else if (readBytes == 0)
-    {
-        std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;
-        return ;
-    }
-    if (readBytes > 0)
-    {
-        std::cout << "resetting connection timer of " << fd << std::endl;
-        this->clients[fd]->resetTime();
-    }
     //std::cout << "Reead bytes are " << readBytes << std::endl;
     switch (clients[fd]->request.getState())
     {
@@ -106,9 +85,7 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << msg << std::endl;
-                sendBadRequest(fd);
-                removeClient(fd);
-                return ;
+                exit(1);
             }
             break;
         case ReadingRequestBody:
@@ -118,38 +95,15 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << msg << std::endl;
-                sendBadRequest(fd);
-                removeClient(fd);
-                return ;
+                exit(1);
             }
             break;
         default:
             std::cout << "waiting for the response to finish" << std::endl;
             break;
     }
-    if (clients[fd]->request.getState() == Done)/*!!!!!!!!!!new code*/
-    {
+    if (clients[fd]->request.getState() == Done)
         std::cout << "read event handled successfuly for target url " << clients[fd]->request.getRequestPath() << std::endl;
-        // now open write mode acces for epoll.
-        struct epoll_event event;
-        event.events = EPOLLOUT | EPOLLERR;
-        event.data.fd = fd;
-        if (epoll_ctl(data.epollfd, EPOLL_CTL_MOD, fd, &event) == -1)
-        {
-            close(data.epollfd); // Important: Close the epoll fd on error
-            throw("epoll_ctl");
-        }
-    }
-}
-
-void Server::sendBadRequest(int fd)
-{
-    std::ostringstream msg;
-
-    msg << "HTTP/1.1 400 Bad Request \r\n"
-        << "\r\n";
-    if (send(fd, msg.str().c_str(), msg.str().length(), MSG_NOSIGNAL) == - 1)
-        throw("send error");        
 }
 
 void Server::handleWriteEvent(int fd)
@@ -164,6 +118,7 @@ void Server::handleWriteEvent(int fd)
     }
     if (clients[fd]->request.getState() != Done) /*change into unique labels*/
     {
+        //std::cout << "client of fd not ready to receive data " << std::endl;
         //usleep(5000);
         return ;
     }
@@ -171,116 +126,106 @@ void Server::handleWriteEvent(int fd)
     // too big of a file : state -> sending body :
     // attributees of response .
     // handling get first.
-    if (clients[fd]->request.getType().compare("GET") == 0)
+    
+// if (clients[fd]->request.getType().compare("GET") == 0) {
+//     if (!clients[fd]->request.getExtension().compare(".py")) {
+//         int fds[2];
+//         if (pipe(fds) == -1) {
+//             throw std::  runtime_error("pipe creation failed");
+//         }
+        
+//         int pid = fork();
+//         if (pid == -1) {
+//             close(fds[0]);
+//             close(fds[1]);
+//             throw std::runtime_error("fork failed");
+//         }
+        
+//         if (pid == 0) {
+            
+//             close(fds[0]); 
+//             dup2(fds[1], STDOUT_FILENO);
+//             close(fds[1]); 
+            
+       
+//             execlp("python3", "python3", "test.py", NULL);
+            
+//             exit(EXIT_FAILURE);
+//         } else {
+//             close(fds[1]); 
+            
+//             char buffer[BUFFER_SIZE];
+//             ssize_t totalSize = 0;
+//             ssize_t size;
+            
+//             while ((size = read(fds[0], buffer + totalSize, BUFFER_SIZE - totalSize - 1)) > 0) {
+//                 totalSize += size;
+//                 if (totalSize >= BUFFER_SIZE - 1) break; 
+//             }
+            
+//             if (totalSize > 0) {
+//                 buffer[totalSize] = '\0'; 
+                
+//                 std::string response = "HTTP/1.1 200 OK\r\n";
+//                 response += "Content-Type: text/html\r\n";
+//                 response += "Content-Length: " + std::to_string(totalSize) + "\r\n";
+//                 response += "\r\n";
+//                 response += buffer;
+                
+//                 send(fd, response.c_str(), response.length(), 0);
+//             } else {
+//                 std::string errorResponse = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+//                 send(fd, errorResponse.c_str(), errorResponse.length(), 0);
+//             }
+            
+//             close(fds[0]);
+            
+//             int status;
+//             waitpid(pid, &status, 0);
+//         }
+//     }
+// }
+     else if (clients[fd]->request.getType().compare("GET") == 0)
+     {
         clients[fd]->response.makeResponse(fd, &clients[fd]->request);
+     }
     else if (clients[fd]->request.getType().compare("POST") == 0)
         clients[fd]->response.successPostResponse(fd);
     else if (clients[fd]->request.getType().compare("DELETE") == 0)
         clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
-    // reset timeout timer
-    clients[fd]->resetTime();
     if (clients[fd]->response.getState() == ResponseDone /*&& clients[fd]->request.isAlive()*/) //  the last reponse completed  the file
     {
-        // afte writing we could remove it from epoll ?
-        // we wont write anything until we get a request.
-        if (!clients[fd]->request.isAlive()) /*keep alive*/
-            removeClient(fd);
-        else /*revoke write permission*/
-        {
-            // just reset everything.
-            clients[fd]->request.reset();
-            clients[fd]->response.reset();
-            // block write?
-        }
+        //std::cout << "client is still alive ..." << std::endl;
+        //clients[fd]->request.reset();
+        //clients[fd]->response.reset();
+        std::cout << "deleting connection ..." << std::endl;
+        close(fd);
+        delete clients[fd];
+        clients.erase(fd);
     }
 }
-
-void Server::handelSocketError(int fd)
-{
-    if (clients.find(fd) == clients.end())
-    {
-        std::cout << "client not found " << std::endl;
-        return ;
-    }
-    std::cout << "------ERROR EVENT ON " << fd << std::endl;
-    removeClient(fd);
-}
-
-void Server::unBindTimedOutClients()
-{
-    // iterate the clients map unbind those who timedout
-    std::map <int, Connection*>::iterator it;
-    struct timeval curTime;
-    gettimeofday(&curTime, nullptr);
-    for (it = clients.begin(); it != clients.end(); ++it)
-    {
-        if ((curTime.tv_sec - it->second->getTime().tv_sec) >= CLIENT_TIMEOUT)
-        {
-            std::cout << "client of fd: " << it->first << " has timedOut" << std::endl;
-            removeClient(it->first);
-        }
-    }
-}
-/*Checks of a client of a given ID connection was closed
-which will require add him as a new client with a new fd
-or else send call will SIGPIPE*/
-bool Server::clientWasRemoved(int toFind)
-{
-    //std::cout << "to find " << toFind << std::endl;
-    std::map<int, Connection*>::iterator it;
-
-    for (it = this->clients.begin() ;it != this->clients.end(); ++it)
-    {
-        if (toFind == it->first)
-             return (false);
-    }
-    std::cout << "----------client was removed previously------------" << std::endl;
-    return (true);
-}
-
 int Server::run()
 {
     int client_fd;
     while (true)
     {
-        unBindTimedOutClients();
         int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
         if (num_events == -1)
-        {
-                throw("off events!");
-        }
-       // std::cout << "num event ist " << num_events << std::endl;
-        // delete timedout  clients;
+            return EXIT_FAILURE;
         for (int i = 0; i < num_events; i++)
         {
-            if ((data.events[i].data.fd == data.sfd))
+            if (data.events[i].data.fd == data.sfd)
             {
                 std::cout << "server socket" << std::endl;
                 addNewClient();
                 continue;
             }
             else if (data.events[i].events & EPOLLIN)
-            {
-                /*if (clientWasRemoved(data.events[i].data.fd))
-                {
-                    addNewClient();
-                    continue;
-                }*/
                 handleReadEvent(data.events[i].data.fd);
-            }
             if (data.events[i].events & EPOLLOUT)
-            {
-                // if client connection was closed skip!
                 handleWriteEvent(data.events[i].data.fd);
-            }
-            else if (data.events[i].events & EPOLLHUP || data.events[i].events & EPOLLERR)
-            {
-                handelSocketError(data.events[i].data.fd);
-            }
-            // handle epollERr and epollhup
         }
     }
-    std::cout << "loop exited" << std::endl;
     close(data.sfd);
     close(data.epollfd);
     return 0;
@@ -316,10 +261,5 @@ int main()
     {
         std::cout << "error : " << error_msg << std::endl;
     }
-    try{
-        apache.run();}
-    catch (const char *error_msg)
-    {
-        std::cout << "error : " << error_msg << std::endl;
-    }
+    apache.run();
 }
