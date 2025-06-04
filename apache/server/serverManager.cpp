@@ -26,11 +26,19 @@ bool ServerManager::isServerSocket(int fd)
 // returns -1 on failure
 int ServerManager::isServerSocket(int fd)
 {
-    for (int i = 0; i < serverSockets.size(); i++)
+    for (int i = 0; i < serversSockets.size(); i++)
     {
-         if (serverSockets[i] == fd)
-            return (i);
+        for(int j = 0; j < serversSockets[i].size(); j++)
+        {
+            if (serversSockets[i][j] == fd)
+                return i;
+        }
     }
+    // for (int i = 0; i < serverSockets.size(); i++)
+    // {
+    //      if (serverSockets[i] == fd)
+    //         return (i);
+    // }
     return (-1);
 }
 
@@ -88,6 +96,7 @@ void ServerManager::establishServers()
         servers[i].setEpollfd(this->epoll_fd);
         for (size_t h = 0; h < hosts.size(); ++h)
         {
+            std::vector<int> sockets;
             for (size_t p = 0; p < ports.size(); ++p)
             {
                 struct sockaddr_in serverAddr;
@@ -95,11 +104,13 @@ void ServerManager::establishServers()
                 if (serverSocket == -1)
                     throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
                 serverSockets.push_back(serverSocket);
+                sockets.push_back(serverSocket);
                 // add the new socket to epoll watch list
                 addToEpoll(serverSocket, EPOLLIN);
                 // add epollfd to servers
                 std::cout << "Listening on " << hosts[h] << ":" << ports[p] << std::endl;
             }
+            serversSockets.push_back(sockets);
         }
     }
 }
@@ -151,8 +162,10 @@ void ServerManager::run()
             // check if connection happens on server socket.
             if ((serverIndex = isServerSocket(epollEventsBuffer[i].data.fd)) != -1)
             {
+                std::cout << "ServerIndex : " << serverIndex << "\n";
+                // here we have a problem the connection is in server index 0 but the output shows 2 to address the issue i will edit isServerSocket.
                 // try catch this ?
-                this->servers[serverIndex].addNewClient(this->epoll_fd, this->serverSockets[serverIndex]);
+                this->servers[serverIndex].addNewClient(this->epoll_fd, epollEventsBuffer[i].data.fd);
                 continue;
             }
             // determine which server has to handle this

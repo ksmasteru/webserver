@@ -12,6 +12,8 @@ private:
 
 public:
     std::vector<Server> servers;
+    // replace serverSockets from vector<int> to vector<vectore<int>> where each element is a server and in each element the sockets of the server
+    std::vector<std::vector<int>> serversSockets;
     std::vector<int> serverSockets;
     std::map<int, Connection *> clients;
     int epoll_fd;
