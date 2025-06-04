@@ -34,53 +34,72 @@ void Cgi::cleanup_resources()
 
 void Cgi::handle_timeout(int)
 {
-    // Empty, used to interrupt `waitpid`
 }
 
 void Cgi::load_into_envp()
 {
     std::vector<std::string> envs;
     envs.push_back("REQUEST_METHOD=" + req->getType());
-
+    
     std::string path = req->getfullpath();
-    std::cout << "full path" << path << std::endl;
     std::string query;
-    if (path.find('?') != std::string::npos)
-        query = path.substr(path.find('?') + 1);
-    std::cout << "full query" << query<< std::endl;
-
+    size_t queryPos = path.find('?');
+    if (queryPos != std::string::npos) {
+        std::string rawQuery = path.substr(queryPos + 1);
+        size_t httpPos = rawQuery.find(" HTTP/");
+        if (httpPos != std::string::npos) {
+            query = rawQuery.substr(0, httpPos);
+        } else {
+            size_t newlinePos = rawQuery.find('\n');
+            if (newlinePos != std::string::npos) {
+                query = rawQuery.substr(0, newlinePos);
+            } else {
+                query = rawQuery;
+            }
+        }
+    }
+    
+    std::cout << "parsed query: " << query << std::endl;
+        
     envs.push_back("QUERY_STRING=" + query);
-    envs.push_back("SCRIPT_NAME=" + scriptPath);
+    envs.push_back("SCRIPT_NAME=" + path);
     envs.push_back("SCRIPT_FILENAME=" + scriptPath);
     envs.push_back("SERVER_PROTOCOL=" + req->getHttpVersion());
     envs.push_back("GATEWAY_INTERFACE=CGI/1.1");
     envs.push_back("SERVER_SOFTWARE=WebServer/1.0");
-
-    // Fix: Get content length from request, not response
-    std::ostringstream oss;
+    
+    envs.push_back("PYTHONDONTWRITEBYTECODE=1");
+    envs.push_back("PYTHONUNBUFFERED=1");
+    envs.push_back("PYTHONIOENCODING=utf-8");
+    envs.push_back("LC_ALL=C.UTF-8");
+    envs.push_back("LANG=C.UTF-8");
+    
+    envs.push_back("PATH=/usr/local/bin:/usr/bin:/bin");
+    
+    std::ostringstream contentLengthStream;
     if (req->getType() == "POST") {
-        
-        oss << this->res->getResData().clength; 
+        contentLengthStream << this->res->getResData().clength;
     } else {
-        oss << "0";
+        contentLengthStream << "0";
     }
-    envs.push_back("CONTENT_LENGTH=" + oss.str());
-
-    oss << this->res->getResData().contentType;
-    envs.push_back("CONTENT_TYPE=" + oss.str());
-
-
-
+    envs.push_back("CONTENT_LENGTH=" + contentLengthStream.str());
+    
+    std::ostringstream contentTypeStream;
+    contentTypeStream << this->res->getResData().contentType;
+    envs.push_back("CONTENT_TYPE=" + contentTypeStream.str());
+    
     for (const auto& [k, v] : req->getHeaders()) {
         std::string key = k;
-        for (size_t i = 0; i < key.size(); ++i)
+        for (size_t i = 0; i < key.size(); ++i) {
             key[i] = (key[i] == '-') ? '_' : std::toupper(key[i]);
+        }
         envs.push_back("HTTP_" + key + "=" + v);
     }
-
+    
     envp = new char *[envs.size() + 1];
-    for (size_t i = 0; i < envs.size(); ++i)
+    for (size_t i = 0; i < envs.size(); ++i) {
         envp[i] = strdup(envs[i].c_str());
+    }
     envp[envs.size()] = NULL;
 }
 
@@ -93,12 +112,11 @@ void Cgi::determine_interpreter()
         else if (ext == "php") interpreter = "/usr/bin/php";
         else if (ext == "pl") interpreter = "/usr/bin/perl";
         else if (ext == "rb") interpreter = "/usr/bin/ruby";
-        else if (ext == "sh") interpreter = "/bin/bash";  
+        else if (ext == "sh") interpreter = "/bin/bash";
         else interpreter.clear();
     } else {
-   
         if (access(scriptPath.c_str(), X_OK) == 0) {
-            interpreter.clear(); // Direct execution
+            interpreter.clear(); 
         }
     }
 }
@@ -135,8 +153,23 @@ void Cgi::execute_child_process()
     }
 
     if (!interpreter.empty()) {
-        char* args[] = { const_cast<char*>(interpreter.c_str()), const_cast<char*>(scriptPath.c_str()), NULL };
-        execve(interpreter.c_str(), args, envp);
+        if (interpreter.find("python") != std::string::npos) {
+            char* args[] = { 
+                const_cast<char*>(interpreter.c_str()), 
+                const_cast<char*>("-S"),  
+                const_cast<char*>("-u"),  
+                const_cast<char*>(scriptPath.c_str()), 
+                NULL 
+            };
+            execve(interpreter.c_str(), args, envp);
+        } else {
+            char* args[] = { 
+                const_cast<char*>(interpreter.c_str()), 
+                const_cast<char*>(scriptPath.c_str()), 
+                NULL 
+            };
+            execve(interpreter.c_str(), args, envp);
+        }
     } else {
         char* args[] = { const_cast<char*>(scriptPath.c_str()), NULL };
         execve(scriptPath.c_str(), args, envp);
@@ -175,22 +208,36 @@ void Cgi::handle_cgi_output()
     if (fds[0] == -1)
         throw std::runtime_error("No CGI output");
 
-    int flags = fcntl(fds[0], F_GETFL, 0);
-    fcntl(fds[0], F_SETFL, flags | O_NONBLOCK);
+    
+    struct timeval tv;
+    tv.tv_sec = 10;  
+    tv.tv_usec = 0;
+    setsockopt(fds[0], SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
 
     std::string output;
     char buf[4096];
     ssize_t r;
+    bool hasData = false;
 
-    while ((r = read(fds[0], buf, sizeof(buf))) > 0)
+    while ((r = read(fds[0], buf, sizeof(buf))) > 0) {
         output.append(buf, r);
+        hasData = true;
+    }
 
-    if (r == -1 && errno != EAGAIN && errno != EWOULDBLOCK)
+    if (r == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+        std::cout << "CGI read error: " << strerror(errno) << std::endl;
         throw std::runtime_error("CGI read error");
+    }
 
     close(fds[0]);
     fds[0] = -1;
 
+    if (!hasData) {
+        std::cout << "No CGI output received" << std::endl;
+        throw std::runtime_error("No CGI output");
+    }
+
+    std::cout << "CGI output received: " << output.length() << " bytes" << std::endl;
     parse_cgi_output(output);
 }
 

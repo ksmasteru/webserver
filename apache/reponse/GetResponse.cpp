@@ -395,7 +395,6 @@ void GetResponse::sendCgiResponse(int cfd)
         this->res_data.status = 500;
         return handleErrorPage("", cfd);
     }
-            std::cout << this->cgi_body << std::endl;
 
     ssize_t totalSent = 0;
     ssize_t responseSize = httpResponse.length();
@@ -403,12 +402,33 @@ void GetResponse::sendCgiResponse(int cfd)
     
     std::cout << "Sending CGI response (" << responseSize << " bytes)" << std::endl;
     
+    int error = 0;
+    socklen_t len = sizeof(error);
+    if (getsockopt(cfd, SOL_SOCKET, SO_ERROR, &error, &len) != 0 || error != 0) {
+        std::cout << "Connection already closed, aborting CGI response send" << std::endl;
+        return;
+    }
+    
     while (totalSent < responseSize) {
-        ssize_t sent = send(cfd, responseData + totalSent, responseSize - totalSent, MSG_NOSIGNAL);
+        ssize_t sent = send(cfd, responseData + totalSent, 
+                           std::min((ssize_t)8192, responseSize - totalSent), 
+                           MSG_NOSIGNAL);
         
         if (sent == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                fd_set writefds;
+                FD_ZERO(&writefds);
+                FD_SET(cfd, &writefds);
+                struct timeval timeout = {5, 0}; /
+                
+                if (select(cfd + 1, NULL, &writefds, NULL, &timeout) <= 0) {
+                    std::cout << "Socket write timeout or error" << std::endl;
+                    break;
+                }
                 continue;
+            } else if (errno == EPIPE || errno == ECONNRESET) {
+                std::cout << "Client disconnected (broken pipe/connection reset)" << std::endl;
+                break;
             } else {
                 std::cout << "Error sending CGI response: " << strerror(errno) << std::endl;
                 break;
@@ -419,6 +439,7 @@ void GetResponse::sendCgiResponse(int cfd)
         }
         
         totalSent += sent;
+        std::cout << "Sent " << sent << " bytes (" << totalSent << "/" << responseSize << ")" << std::endl;
     }
     
     this->_progress.sentBytes = totalSent;
@@ -426,6 +447,10 @@ void GetResponse::sendCgiResponse(int cfd)
     this->_progress.progress = (totalSent == responseSize) ? 1 : 0;
     
     std::cout << "CGI response sent: " << totalSent << "/" << responseSize << " bytes" << std::endl;
+    
+    if (totalSent == responseSize) {
+        this->state = ResponseDone;
+    }
 }
 
 bool GetResponse::validateCgiScript(const std::string& scriptPath)
