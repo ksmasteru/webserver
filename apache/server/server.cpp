@@ -475,13 +475,27 @@ int main(int ac, char **av)
     try {
         configParser.parse(confFile);
         configParser.printConfig();
-        ServerManager servManager(configParser.getServers());
-        servManager.establishServers();
-        servManager.run();
     }
     catch (const char *msg)
     {
         std::cout << msg << std::endl;
+    }
+    try {
+        ServerManager servManager(configParser.getServers());
+        servManager.establishServers();
+        try{
+            servManager.run();
+        }
+        catch (const char *msg)
+        {
+            std::cerr << msg << std::endl;
+            servManager.closeAllSockets();
+            close(servManager.epoll_fd);
+        }
+    }
+    catch(const char *msg)
+    {
+        std::cerr << msg << std::endl;
     }
     catch (std::exception& e)
     {

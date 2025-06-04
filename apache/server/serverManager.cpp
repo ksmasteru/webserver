@@ -170,9 +170,8 @@ void ServerManager::run()
             else if(epollEventsBuffer[i].events & EPOLLOUT)
             {
                 this->servers[targetServer].handleWriteEvent(epollEventsBuffer[i].data.fd);
-                continue;
             }
-            else if (epollEventsBuffer[i].events & EPOLLHUP ||
+           else if (epollEventsBuffer[i].events & EPOLLHUP ||
                 epollEventsBuffer[i].events & EPOLLERR)
             {
                 this->servers[targetServer].handelSocketError(epollEventsBuffer[i].data.fd);
@@ -181,6 +180,4 @@ void ServerManager::run()
         // close all sockets
     }
     // also you should CLOSE ALL CLIENTS and open files.
-    closeAllSockets();
-    close(this->epoll_fd);
 }
