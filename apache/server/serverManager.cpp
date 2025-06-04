@@ -165,10 +165,12 @@ void ServerManager::run()
             else if (epollEventsBuffer[i].events & EPOLLIN)
             {
                 this->servers[targetServer].handleReadEvent(epollEventsBuffer[i].data.fd);
+                continue;
             }
-            else if (epollEventsBuffer[i].events & EPOLLOUT)
+            else if(epollEventsBuffer[i].events & EPOLLOUT)
             {
                 this->servers[targetServer].handleWriteEvent(epollEventsBuffer[i].data.fd);
+                continue;
             }
             else if (epollEventsBuffer[i].events & EPOLLHUP ||
                 epollEventsBuffer[i].events & EPOLLERR)

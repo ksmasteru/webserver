@@ -116,7 +116,12 @@ void Server::handleReadEvent(int fd)
     // receiv.
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
-        throw ("recv failed");
+    {
+        // close connection here.
+        std::cout << "closed connection for read even of fd: " << fd << std::endl;
+        removeClient(fd);
+        return ;
+    }
     else if (readBytes == 0)
     {
         //std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;
@@ -213,7 +218,7 @@ void Server::handleWriteEvent(int fd)
     }
     catch (int cfd) // if a send opeartion fails immmediately close the connection.
     {
-        std::cout << "handling connection failre on " << cfd << std::endl;
+        std::cout << "handling connection failure on " << cfd << std::endl;
         removeClient(cfd);
         return ;
     }

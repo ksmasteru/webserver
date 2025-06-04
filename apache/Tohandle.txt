@@ -63,8 +63,9 @@ socket per server.
 !!!!!!!!!!!!!!!overflow of content length causes the connection to close // yes :: try with chunked
 
 
-// browser send multi request for fetching video ? : a way to block this connection!.
+FIXED: browser send multi request for fetching video ? : a way to block this connection!.
 // range
 bytes=0- block requests with this header. or can you check if the socket was blocked ?
 and simply close the connection. !!!!!!!!!!!!! DONE
 
+ISSUE : handle all throw calls.
