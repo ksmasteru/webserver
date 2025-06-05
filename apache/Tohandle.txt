@@ -69,3 +69,6 @@ bytes=0- block requests with this header. or can you check if the socket was blo
 and simply close the connection. !!!!!!!!!!!!! DONE
 
 ISSUE : handle all throw calls.
+
+
+TODO : use config file.

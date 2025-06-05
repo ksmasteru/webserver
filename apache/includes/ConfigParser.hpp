@@ -203,10 +203,7 @@ public:
                 if (path.empty())
                     throw std::runtime_error("Error: Missing path in location directive");
                 location.setPath(path);
-                
-                // Parse location block
-                parseLocationBlock(conf, location);
-                
+                parseLocationBlock(conf, location);                
                 // Add location to server
                 server.addLocation(location);
             }

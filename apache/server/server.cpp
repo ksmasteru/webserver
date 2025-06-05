@@ -210,7 +210,7 @@ void Server::handleWriteEvent(int fd)
     try
     {
         if (clients[fd]->request.getType().compare("GET") == 0)
-            clients[fd]->response.makeResponse(fd, &clients[fd]->request);
+            clients[fd]->response.makeResponse(fd, &clients[fd]->request, _errorPages, _locations); // new:5/6
         else if (clients[fd]->request.getType().compare("POST") == 0)
             clients[fd]->response.successPostResponse(fd);
         else if (clients[fd]->request.getType().compare("DELETE") == 0)

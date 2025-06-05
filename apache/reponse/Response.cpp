@@ -273,11 +273,27 @@ void Response::handleErrorPage(const char *path, int cfd)
     }
 }
 
+// returns value form start to
+std::string getFolderName(const char *path)
+{
+    size_t
+}
+
+// giving path find the correponsponding location.
+// path example : /video.mp4; path maps to a specefic location. ? 
+std::string Response::getPagePath(const char *path,  std::vector<Location> locations)
+{
+    // /ffff/ -- > between the slashes is the location.
+    std::string folder = getFolderName(path);
+}
+
 // send repsonse and close cfd for GET!!!.
-void Response::makeResponse(int cfd, Request* req)
+void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &errorPages,
+    std::vector<Location> &locations)
 {
     this->_request = req;
     //std::cout << "make response called" << std::endl;
+    std::string path = getPagePath(req->getRequestPath(), locations);
     std::string path = "pages" + req->getRequestPath();
     this->res_data.status = 200;
     if (path.compare("pages/") == 0)

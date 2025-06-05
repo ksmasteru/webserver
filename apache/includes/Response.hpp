@@ -3,6 +3,9 @@
 #include "AResponse.hpp"
 #include <ctime>
 #include "Iconnect.hpp"
+#include "Location.hpp"
+#include <string>
+
 #define BUFFER_SIZE 1024
 
 enum  ResponseState{
@@ -24,7 +27,7 @@ class Response : public AResponse
         Response(const std::string& type, Request *req, std::map<std::string, std::string>* status, int client_fd);
         Response();
         virtual ~Response();
-        void  makeResponse(int cfd, Request*);
+        void makeResponse(int cfd, Request* req, std::map<int, std::string> &errorPages, std::vector<Location> &locations);
         void    getFileReady(int fd);
         std::string getTime();
         std::string makeRspHeader();
@@ -54,4 +57,5 @@ class Response : public AResponse
         }
         void deleteResponse(int, Request*);
         void sendNotFoundPage(const char* path, int cfd, bool redir);
+        std::string getPagePath(const char *, std::vector<Location>);
 };
