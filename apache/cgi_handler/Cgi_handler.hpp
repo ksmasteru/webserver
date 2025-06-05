@@ -26,7 +26,7 @@ private:
     int fds[2];  
     Request *req;
     AResponse *res;
-    static const int DEFAULT_CGI_TIMEOUT = 60;
+    static const int DEFAULT_CGI_TIMEOUT = 5;
     int timeout;
     std::string scriptPath;
     std::string interpreter;

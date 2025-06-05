@@ -182,25 +182,34 @@ void Cgi::execute_parent_process()
 {
     close(fds[1]);
     fds[1] = -1;
-
-    signal(SIGALRM, handle_timeout);
-    alarm(timeout);
-
     int status;
-    int ret = waitpid(pid, &status, 0);
-    alarm(0);
+    time_t start = time(NULL);
 
-    if (ret == -1) {
-        kill(pid, SIGKILL);
-        waitpid(pid, &status, 0);
-        throw std::runtime_error("CGI script timeout or error");
+    while (true)
+    {
+        int ret = waitpid(pid, &status, WNOHANG);
+
+        if (ret == -1) {
+            kill(pid, SIGKILL);
+            waitpid(pid, &status, 0);
+            throw std::runtime_error("CGI script error during execution");
+        } else if (ret == 0) {
+            if (time(NULL) - start > this->timeout) {
+                kill(pid, SIGKILL);
+                waitpid(pid, &status, 0);
+                throw std::runtime_error("CGI script timeout");
+            }
+            usleep(100000); // Sleep for 100ms to avoid busy-waiting
+        } else {
+            if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
+                throw std::runtime_error("CGI script exited with error");
+
+            if (WIFSIGNALED(status))
+                throw std::runtime_error("CGI script killed by signal");
+
+            break; // Process finished successfully
+        }
     }
-
-    if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
-        throw std::runtime_error("CGI script exited with error");
-
-    if (WIFSIGNALED(status))
-        throw std::runtime_error("CGI script killed by signal");
 }
 
 void Cgi::handle_cgi_output()
@@ -208,11 +217,7 @@ void Cgi::handle_cgi_output()
     if (fds[0] == -1)
         throw std::runtime_error("No CGI output");
 
-    
-    struct timeval tv;
-    tv.tv_sec = 10;  
-    tv.tv_usec = 0;
-    setsockopt(fds[0], SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv));
+
 
     std::string output;
     char buf[4096];

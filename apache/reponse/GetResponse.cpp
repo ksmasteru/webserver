@@ -199,6 +199,8 @@ void GetResponse::sendPage(const char *path, int cfd, bool redirection)
 
 void GetResponse::handleErrorPage(const char *path, int cfd)
 {
+
+    // check status code if already setin my case if 
     if (access(path, F_OK) == -1)
     {
         this->res_data.status = 404;
@@ -209,6 +211,8 @@ void GetResponse::handleErrorPage(const char *path, int cfd)
         this->res_data.status = 403;
         return (sendPage("pages/403.html", cfd, true));
     }
+        return (sendPage("pages/403.html", cfd, true));
+
 }
 
 // send repsonse and close cfd for GET!!!.
@@ -233,7 +237,6 @@ void GetResponse::makeResponse(int cfd, Request* req)
         return handleErrorPage(path.c_str(), cfd);
     }
     
-    // Check if request is for a CGI script (nginx-style CGI detection)
     if (isCgiScript(requestPath)) {
         std::cout << "Processing CGI request for: " << requestPath << std::endl;
         return handleCgiRequest(path, cfd, req);
@@ -350,7 +353,7 @@ void GetResponse::handleCgiRequest(const std::string& scriptPath, int cfd, Reque
             return handleErrorPage(scriptPath.c_str(), cfd);
         }
         
-        Cgi cgiHandler(req, this, scriptPath, 60);
+        Cgi cgiHandler(req, this, scriptPath, 5);
         
         std::cout << "Executing CGI script: " << scriptPath << std::endl;
         
@@ -372,9 +375,35 @@ void GetResponse::handleCgiRequest(const std::string& scriptPath, int cfd, Reque
 
         std::string error_msg = e.what();
         
-        if (error_msg.find("timeout") != std::string::npos) {
-            this->res_data.status = 504;
-        } else if (error_msg.find("not found") != std::string::npos || 
+       if (error_msg.find("timeout") != std::string::npos) {
+    std::cout << "wazbi timout l7wa "  << std::endl;
+
+    // Prepare the 504 Gateway Timeout response
+    std::string body =
+        "<html>\r\n"
+        "<head><title>504 Gateway Timeout</title></head>\r\n"
+        "<body>\r\n"
+        "<h1>504 Gateway Timeout</h1>\r\n"
+        "<p>The CGI script took too long to respond.</p>\r\n"
+        "</body>\r\n"
+        "</html>\r\n";
+
+    std::string response =
+        "HTTP/1.1 504 Gateway Timeout\r\n"
+        "Content-Type: text/html\r\n"
+        "Content-Length: " + std::to_string(body.length()) + "\r\n"
+        "Connection: close\r\n"
+        "\r\n" + body;
+
+    // Send the response to the client
+    send(cfd, response.c_str(), response.length(), 0);
+
+    this->res_data.status = 504;
+        return ;
+    // Close the connection after sending the response
+  
+}
+else if (error_msg.find("not found") != std::string::npos || 
                    error_msg.find("No such file") != std::string::npos) {
             this->res_data.status = 404;
         } else if (error_msg.find("Permission denied") != std::string::npos) {
@@ -419,7 +448,7 @@ void GetResponse::sendCgiResponse(int cfd)
                 fd_set writefds;
                 FD_ZERO(&writefds);
                 FD_SET(cfd, &writefds);
-                struct timeval timeout = {5, 0}; /
+                struct timeval timeout = {5, 0}; 
                 
                 if (select(cfd + 1, NULL, &writefds, NULL, &timeout) <= 0) {
                     std::cout << "Socket write timeout or error" << std::endl;
