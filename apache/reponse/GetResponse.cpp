@@ -218,6 +218,8 @@ void GetResponse::handleErrorPage(const char *path, int cfd)
 // send repsonse and close cfd for GET!!!.
 void GetResponse::makeResponse(int cfd, Request* req)
 {
+     std::cout << "content type is " <<this->res_data.contentType<< std::endl;
+
     this->_request = req;
     
     std::string requestPath = req->getRequestPath();
@@ -353,7 +355,7 @@ void GetResponse::handleCgiRequest(const std::string& scriptPath, int cfd, Reque
             return handleErrorPage(scriptPath.c_str(), cfd);
         }
         
-        Cgi cgiHandler(req, this, scriptPath, 5);
+    Cgi cgiHandler(req, this, scriptPath, 5);
         
         std::cout << "Executing CGI script: " << scriptPath << std::endl;
         
@@ -397,8 +399,9 @@ void GetResponse::handleCgiRequest(const std::string& scriptPath, int cfd, Reque
 
     // Send the response to the client
     send(cfd, response.c_str(), response.length(), 0);
-
+    close(cfd);
     this->res_data.status = 504;
+    this->resetCgiData();
         return ;
     // Close the connection after sending the response
   
@@ -448,13 +451,8 @@ void GetResponse::sendCgiResponse(int cfd)
                 fd_set writefds;
                 FD_ZERO(&writefds);
                 FD_SET(cfd, &writefds);
-                struct timeval timeout = {5, 0}; 
                 
-                if (select(cfd + 1, NULL, &writefds, NULL, &timeout) <= 0) {
-                    std::cout << "Socket write timeout or error" << std::endl;
-                    break;
-                }
-                continue;
+              
             } else if (errno == EPIPE || errno == ECONNRESET) {
                 std::cout << "Client disconnected (broken pipe/connection reset)" << std::endl;
                 break;

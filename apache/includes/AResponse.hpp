@@ -19,7 +19,6 @@ class  AResponse{
         int _client_fd;
         struct progress _progress;
 
-            // CGI-related members
     std::string cgi_body;
     std::map<std::string, std::string> cgi_headers;
     int status_code;
@@ -67,24 +66,17 @@ class  AResponse{
         virtual bool isAlive () const = 0;
         virtual size_t  getSize() = 0;
 
-         // CGI-related functions
-    
-    /**
-     * Set the CGI response body
-     * @param body The body content from CGI script
-     */
+   
     void setCgiBody(const std::string& body)
     {
         this->cgi_body = body;
         this->is_cgi_response = true;
-        // Update content length
         this->res_data.clength = body.length();
     }
 
       std::string getStatusMessage(int code)
     {
         if (statuscodes == NULL) {
-            // Fallback messages
             switch(code) {
                 case 200: return "OK";
                 case 201: return "Created";
@@ -115,29 +107,19 @@ class  AResponse{
     }
 
     
-    /**
-     * Add a header from CGI output
-     * @param key Header name
-     * @param value Header value
-     */
+
     void addHeader(const std::string& key, const std::string& value)
     {
         this->cgi_headers[key] = value;
     }
     
-    /**
-     * Set the HTTP status code from CGI
-     * @param code HTTP status code (e.g., 200, 404, 500)
-     */
+
     void setStatusCode(int code)
     {
         this->status_code = code;
     }
     
-    /**
-     * Set content type from CGI
-     * @param contentType MIME type (e.g., "text/html", "application/json")
-     */
+  
     void setContentType(const std::string& contentType)
     {
         this->res_data.contentType = contentType;

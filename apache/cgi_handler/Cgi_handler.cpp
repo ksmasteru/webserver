@@ -38,6 +38,8 @@ void Cgi::handle_timeout(int)
 
 void Cgi::load_into_envp()
 {
+        std::cout << "content type this is  " << this->res->getResData().contentType << std::endl;
+
     std::vector<std::string> envs;
     envs.push_back("REQUEST_METHOD=" + req->getType());
     
@@ -85,7 +87,6 @@ void Cgi::load_into_envp()
     envs.push_back("CONTENT_LENGTH=" + contentLengthStream.str());
     
     std::ostringstream contentTypeStream;
-    contentTypeStream << this->res->getResData().contentType;
     envs.push_back("CONTENT_TYPE=" + contentTypeStream.str());
     
     for (const auto& [k, v] : req->getHeaders()) {
@@ -199,7 +200,7 @@ void Cgi::execute_parent_process()
                 waitpid(pid, &status, 0);
                 throw std::runtime_error("CGI script timeout");
             }
-            usleep(100000); // Sleep for 100ms to avoid busy-waiting
+            usleep(100000); 
         } else {
             if (WIFEXITED(status) && WEXITSTATUS(status) != 0)
                 throw std::runtime_error("CGI script exited with error");
@@ -207,7 +208,7 @@ void Cgi::execute_parent_process()
             if (WIFSIGNALED(status))
                 throw std::runtime_error("CGI script killed by signal");
 
-            break; // Process finished successfully
+            break; 
         }
     }
 }

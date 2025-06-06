@@ -17,10 +17,10 @@ class GetResponse : public AResponse
         bool    chunked;
         bool    openfile;
         int fd;
-    bool isCgiScript(const std::string& requestPath);
-    void handleCgiRequest(const std::string& scriptPath, int cfd, Request* req);
-    void sendCgiResponse(int cfd);
-    bool validateCgiScript(const std::string& scriptPath);
+        bool isCgiScript(const std::string& requestPath);
+        void handleCgiRequest(const std::string& scriptPath, int cfd, Request* req);
+        void sendCgiResponse(int cfd);
+        bool validateCgiScript(const std::string& scriptPath);
 
     public:
 

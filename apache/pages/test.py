@@ -1,24 +1,10 @@
-import time
-import sys
+#!/usr/bin/env python3
+import os
 
-print("Content-Type: text/html\\r\\n\\r\\n")
+print("Content-Type: text/html\r")
+print("\r")
 print("<html><body>")
-
-
-counter = 0
-start_time = time.time()
-
-try:
-    while True:
-        counter += 1
-        if counter % 100000 == 0:  # Print every 100k iterations
-            elapsed = time.time() - start_time
-            print(f"<p>Iteration {counter}, elapsed: {elapsed:.1f}s</p>")
-        
-        # Simulate some work
-        dummy = sum(range(100))
-        
-except KeyboardInterrupt:
-    print(f"<p>❌ Script interrupted after {counter} iterations</p>")
-    print("</body></html>")
-    sys.exit(124)  # Timeout exit code
+print("<h1>CGI Test</h1>")
+print("<p>Query String: " + os.environ.get('CONTENT_LENGTH', 'None') + "</p>")
+print("<p>Request Method: " + os.environ.get('REQUEST_METHOD', 'None') + "</p>")
+print("</body></html>")
