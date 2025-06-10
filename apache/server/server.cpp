@@ -230,6 +230,7 @@ int main(int ac, char **av)
         confParser.printConfig();
         ServerManager servManager(confParser.getServers());
         servManager.establishServers();
+        // 
         apache.establishServer();
     }
     catch (const char *error_msg)

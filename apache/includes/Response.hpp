@@ -50,4 +50,7 @@ class Response : public AResponse
             openfile = false;
         }
         void deleteResponse(int, Request*);
+        // 
+        void handleCgiRequest(const std::string &scriptPath, int cfd, Request *req);
+        void sendCgiResponse(int cfd);
 };

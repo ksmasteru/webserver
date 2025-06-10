@@ -90,6 +90,7 @@ void Request::parseRequestHeader(char* request, int readBytes)
     // each time enters with a new char buffer
     char c;
     int offset = 0;
+    this->fullpath = request;
     std::string fieldname, fieldvalue;
     _bytesread = readBytes;
     if (this->SubState < name)
@@ -624,4 +625,10 @@ bool Request::isAlive()
 std::string Request::getHttpVersion(){
     std::string version = "HTTP/";
     return (version + this->httpGreater + '.' + this->httpMinor);
+}
+
+
+std::string Request::getfullpath()
+{
+    return this->fullpath;
 }
