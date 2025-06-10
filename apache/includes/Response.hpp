@@ -7,6 +7,8 @@ enum  ResponseState{
     sendingBody,
     ResponseDone
 };
+
+class AResponse;
 class Response : public AResponse
 {
     private:
@@ -51,4 +53,8 @@ class Response : public AResponse
         }
         void deleteResponse(int, Request*);
         void sendNotFoundPage(const char* path, int cfd, bool redir);
+        // 
+        void handleCgiRequest(const std::string& scriptPath, int cfd, Request* req);
+        void sendCgiResponse(int cfd);
+        // Cgi cgiHandler(req, this, scriptPath, 5);
 };

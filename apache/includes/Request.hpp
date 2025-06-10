@@ -77,6 +77,7 @@ class  Request{ // read event.
     std::string RawRequest;
     std::string type;
     std::string qkey;
+    std::string fullpath;
     t_FILE  RequestFile;
     bool openRequestFile;
     bool openPostfd;
@@ -104,6 +105,11 @@ class  Request{ // read event.
     std::string getHttpVersion();
     void    setUpPostFile();
     void addtoheaders(std::string& key, std::string& val);
+    const std::map<std::string, std::string>& getHeaders() const {
+
+        return headers;
+
+    }
     std::string getRequestPath();
     const std::string& getRawRequest() const;
     const std::string& getType() const;
@@ -134,5 +140,6 @@ class  Request{ // read event.
     void    chunkedBody(char *, int, int);
     int     getPostFd();
     std::string getExtension();
+    std::string getfullpath();
     ~Request(){}
 };

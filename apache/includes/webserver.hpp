@@ -20,6 +20,7 @@
 #include "utils.hpp"
 #include <ctime>
 #include <sys/time.h>
+#include "Iconnect.hpp"
 
 #define MAX_EVENTS 10
 #define BUFFER_SIZE 1024

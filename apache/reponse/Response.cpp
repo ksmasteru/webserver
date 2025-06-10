@@ -1,4 +1,5 @@
 #include "../includes/Response.hpp"
+#include "../includes/cgiHandler.hpp"
 #include <fstream>
 #include <sys/stat.h>
 
@@ -247,6 +248,157 @@ void Response::handleErrorPage(const char *path, int cfd)
     }
 }
 
+bool isCgiScript(const std::string& requestPath)
+{
+    size_t lastDot = requestPath.find_last_of('.');
+    if (lastDot == std::string::npos) {
+        return false;
+    }
+    
+    std::string extension = requestPath.substr(lastDot);
+    
+    return (extension == ".py" ||
+            extension == ".pl" ||
+            extension == ".php" ||
+            extension == ".rb" ||
+            extension == ".sh" ||
+            extension == ".cgi");
+}
+
+void Response::sendCgiResponse(int cfd)
+{
+    std::string httpResponse = this->buildCgiResponse();
+    if (httpResponse.empty()) {
+        std::cout << "Empty CGI response, sending 500 error" << std::endl;
+        this->res_data.status = 500;
+        return handleErrorPage("", cfd);
+    }
+
+    ssize_t totalSent = 0;
+    ssize_t responseSize = httpResponse.length();
+    const char* responseData = httpResponse.c_str();
+    
+    std::cout << "Sending CGI response (" << responseSize << " bytes)" << std::endl;
+    
+    int error = 0;
+    socklen_t len = sizeof(error);
+    if (getsockopt(cfd, SOL_SOCKET, SO_ERROR, &error, &len) != 0 || error != 0) {
+        std::cout << "Connection already closed, aborting CGI response send" << std::endl;
+        return;
+    }
+    
+    while (totalSent < responseSize) {
+        ssize_t sent = send(cfd, responseData + totalSent, 
+                           std::min((ssize_t)8192, responseSize - totalSent), 
+                           MSG_NOSIGNAL);
+        
+        if (sent == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                fd_set writefds;
+                FD_ZERO(&writefds);
+                FD_SET(cfd, &writefds);
+                
+              
+            } else if (errno == EPIPE || errno == ECONNRESET) {
+                std::cout << "Client disconnected (broken pipe/connection reset)" << std::endl;
+                break;
+            } else {
+                std::cout << "Error sending CGI response: " << strerror(errno) << std::endl;
+                break;
+            }
+        } else if (sent == 0) {
+            std::cout << "Client disconnected during CGI response send" << std::endl;
+            break;
+        }
+        
+        totalSent += sent;
+        std::cout << "Sent " << sent << " bytes (" << totalSent << "/" << responseSize << ")" << std::endl;
+    }
+    
+    this->_progress.sentBytes = totalSent;
+    this->_progress.sentTotal = responseSize;
+    this->_progress.progress = (totalSent == responseSize) ? 1 : 0;
+    
+    std::cout << "CGI response sent: " << totalSent << "/" << responseSize << " bytes" << std::endl;
+    
+    if (totalSent == responseSize) {
+        this->state = ResponseDone;
+    }
+}
+
+void Response::handleCgiRequest(const std::string& scriptPath, int cfd, Request* req)
+{
+    try {
+        if (access(scriptPath.c_str(), X_OK) != 0) {
+            std::cout << "CGI script not executable: " << scriptPath << std::endl;
+            this->res_data.status = 403;
+            return handleErrorPage(scriptPath.c_str(), cfd);
+        }
+        
+    Cgi cgiHandler(req, this, scriptPath, 5);
+        
+        std::cout << "Executing CGI script: " << scriptPath << std::endl;
+        
+        cgiHandler.execute_cgi();
+        
+        cgiHandler.handle_cgi_output();
+        
+        if (this->isCgiResponse()) {
+            std::cout << "CGI execution successful, sending response" << std::endl;
+            sendCgiResponse(cfd);
+        } else {
+            std::cout << "CGI execution failed, no output received" << std::endl;
+            this->res_data.status = 500;
+            handleErrorPage(scriptPath.c_str(), cfd);
+        }
+        
+    } catch (const std::exception& e) {
+        std::cout << "CGI execution error: " << e.what() << std::endl;
+
+        std::string error_msg = e.what();
+        
+       if (error_msg.find("timeout") != std::string::npos) {
+    std::cout << "wazbi timout l7wa "  << std::endl;
+
+    // Prepare the 504 Gateway Timeout response
+    std::string body =
+        "<html>\r\n"
+        "<head><title>504 Gateway Timeout</title></head>\r\n"
+        "<body>\r\n"
+        "<h1>504 Gateway Timeout</h1>\r\n"
+        "<p>The CGI script took too long to respond.</p>\r\n"
+        "</body>\r\n"
+        "</html>\r\n";
+
+    std::string response =
+        "HTTP/1.1 504 Gateway Timeout\r\n"
+        "Content-Type: text/html\r\n"
+        "Content-Length: " + std::to_string(body.length()) + "\r\n"
+        "Connection: close\r\n"
+        "\r\n" + body;
+
+    // Send the response to the client
+    send(cfd, response.c_str(), response.length(), 0);
+    close(cfd);
+    this->res_data.status = 504;
+    this->resetCgiData();
+        return ;
+    // Close the connection after sending the response
+  
+}
+else if (error_msg.find("not found") != std::string::npos || 
+                   error_msg.find("No such file") != std::string::npos) {
+            this->res_data.status = 404;
+        } else if (error_msg.find("Permission denied") != std::string::npos) {
+            this->res_data.status = 403;
+        } else {
+            this->res_data.status = 500;
+        }
+        
+        handleErrorPage(scriptPath.c_str(), cfd);
+    }
+}
+
 // send repsonse and close cfd for GET!!!.
 void Response::makeResponse(int cfd, Request* req)
 {
@@ -259,10 +411,13 @@ void Response::makeResponse(int cfd, Request* req)
         std::cout << "index page" << std::endl;
         sendPage("pages/index.html", cfd, true);
     }
-    else if (access(path.c_str(),R_OK) == 0)
-        return (sendPage(path.c_str(), cfd, false));
-    else
+    else if (access(path.c_str(),R_OK) != 0)
         return (handleErrorPage(path.c_str(), cfd));
+    if (isCgiScript(path))
+    {
+        std::cout << "Processing CGI request for: " << path << std::endl;
+        return handleCgiRequest(path, cfd, req);
+    }
 }
 
 // header of a successful post response.

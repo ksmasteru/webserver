@@ -195,6 +195,7 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
 {
     this->SubState = start;
     char c;
+    this->fullpath = request;
     int first;
     for (;offset < readBytes; offset++)
     {
@@ -630,4 +631,9 @@ bool Request::isAlive()
 std::string Request::getHttpVersion(){
     std::string version = "HTTP/";
     return (version + this->httpGreater + '.' + this->httpMinor);
+}
+
+std::string Request::getfullpath()
+{
+    return this->fullpath;
 }
