@@ -37,9 +37,7 @@ A server that receives a request message with a
   times out before the indicated number of octets are received,
    the recipient MUST consider the message to be incomplete and close the connection.
 
-   
-
-   a keepalive tiemout (5s by default) and a connection timeout (2min
+   a keepalive tiemout (5s by default) and a connection timeout 2min
 
    // if a client send a request after he has been removed it causes a SIGPIP.
    // client timeout + send again a request error:
@@ -72,3 +70,10 @@ ISSUE : handle all throw calls.
 
 
 TODO : use config file.
+in config file make sure that each location ends with / ! ?
+
+!!!!!!!!!!IN POST A USER SEND IN THE header cont-len 11 ut only send 5 == server hangs. why wasnt it timeout ? : detect where it hangs.
+
+!!! adjust timer for each phase :: handled.
+
+should requestFile struct be reset during a reset.

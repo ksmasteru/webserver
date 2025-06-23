@@ -89,14 +89,14 @@ void ServerManager::addToEpoll(int sfd, int mode)
 void ServerManager::establishServers()
 {
     // creating passive sockets for each server.
-    for (size_t i = 0; i < servers.size(); ++i)
+    for (size_t i = 0; i < servers.size(); i++)
     {
         std::vector<std::string> hosts = servers[i].getHosts();
         std::vector<int> ports = servers[i].getPorts();
         servers[i].setEpollfd(this->epoll_fd);
-        for (size_t h = 0; h < hosts.size(); ++h)
+        for (size_t h = 0; h < hosts.size(); h++)
         {
-            for (size_t p = 0; p < ports.size(); ++p)
+            for (size_t p = 0; p < ports.size(); p++)
             {
                 struct sockaddr_in serverAddr;
                 int serverSocket = makePassiveSocket(&serverAddr, hosts[h], ports[p]);
@@ -145,18 +145,24 @@ void ServerManager::run()
     std::cout << "Server manager is running..." << std::endl;
     int serverIndex = -1;
     int targetServer = -1;
+    
     while (true)
     {
+        // updated : sets flag on clients that timed out --> response send timeout and detachs;
         closeTimedOutClients();
-        int num_events = epoll_wait(this->epoll_fd, this->epollEventsBuffer, MAX_EVENTS, -1);
+        //std::cout << "out loop" << std::endl;
+        int num_events = epoll_wait(this->epoll_fd, this->epollEventsBuffer, MAX_EVENTS, 100); // here it is blocking.
+        // so fllow of exectuion stucks here : i guess it is a bad idea;
+        //std::cout << "number of events is: " << num_events << std::endl;
         if (num_events == -1)
         {
             std::cout << "errno " << errno << std::endl;
             throw ("epoll_wait error\n");
-        }
-        // once process handles all connection  NO DUPLICATE fds.
+        }   
+        // one process handles all connection  NO DUPLICATE fds.
         for (int i = 0; i < num_events; i++)
         {
+            //std::cout << "In loop" << std::endl;
             // check if connection happens on server socket.
             if ((serverIndex = isServerSocket(epollEventsBuffer[i].data.fd)) != -1)
             {

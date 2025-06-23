@@ -34,4 +34,8 @@ typedef struct InetData{
 #include "Location.hpp"
 #include "ConfigParser.hpp"
 #include "Iconnect.hpp"
-#define CLIENT_TIMEOUT 3
+
+// bewlo is timeout TIMES IN SEC.
+#define HEADER_TIMEOUT 5
+#define BODY_TIMEOUT 30
+#define CONNECTION_TIMEOUT 3600

@@ -28,6 +28,7 @@ bool isHttp(char *str)
     return (str[0] == 'H' && str[1] == 'T' && str[2] == 'T'
         && str[3] == 'P' && str[4] == '/');
 }
+
 void Request::setConnectionType()
 {
     // iteate the map and find Connection :
@@ -43,15 +44,18 @@ void Request::setConnectionType()
         }
     }
 }
+
 /*if request type != get and there is still data after parssing 
 header throw bad request.*/
+
 Request::Request()
 {
     MainState = ReadingRequestHeader;
     SubState = start;
-    openPostfd = false;
     openRequestFile = false;
     totLent = 0;
+    _requestErrors.badRequest = false;
+    _requestErrors.notAllowed = false;
 }
 
 const std::string&   Request::getRawRequest() const{
@@ -85,15 +89,29 @@ bool unvalidheaderVal(std::string& val)
     return (false);
 }
 
-void Request::parseRequestHeader(char* request, int readBytes)
+// timeout is the solution;
+void Request::parseRequestHeader(char* request, int readBytes, std::vector<Location> locations)
 {
     // each time enters with a new char buffer
+
+    request[readBytes - 1] = 0;
+    std::cout << "header ist : " << request << std::endl;
     char c;
     int offset = 0;
     std::string fieldname, fieldvalue;
     _bytesread = readBytes;
     if (this->SubState < name)
-        parseRequestLine(request, readBytes, offset); // increment offset;
+    {
+        try{
+            parseRequestLine(request, readBytes, offset); // increment offset;
+        }
+        catch (const char *msg) // bad request;
+        {
+            std::cout << msg << std::endl;
+            this->MainState = Done;
+            throw (msg); // eh ?
+        }
+    }
     std::cout << "after parsing request line offset is "<< offset << " susbstate " << SubState << std::endl;
     for (; offset < _bytesread; offset++)
     {
@@ -155,7 +173,23 @@ void Request::parseRequestHeader(char* request, int readBytes)
                     // in this case we move to body parsing.
                     this->MainState = ReadingRequestBody;
                     offset++;
-                    return (parseRequestBody(request,offset,readBytes));
+                    std::cout << "parsing request body called from header" << std::endl;
+                    //changed below code to handle valid path for post
+                    try
+                    {
+                        parseRequestBody(request,offset,readBytes, locations);
+                    }
+                    catch (int n)
+                    {
+                        this->MainState = Done;
+                        throw (n);
+                    }
+                    catch (const char *msg)
+                    {
+                        this->MainState = Done;
+                        throw (msg);
+                    }
+                    return ;
                 }
                 headers[fieldname] = fieldvalue;
                 fieldvalue.clear();
@@ -392,16 +426,22 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
             }
     }
 }
+
 void Request::setUpPostFile()
 {
     std::string fileName = generateUniqueFilename();
-    //std::string extension = getExtension(); 
+    //std::string extension = getExtension();
     fileName += getExtension();
+    this->RequestFile.fileName = fileName;
     std::cout << "filename for upload ist " << fileName << std::endl;
-    try {
+    try 
+    {
         this->RequestFile.fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
         if (this->RequestFile.fd == -1)/*should throw an error : stop request.*/
-            throw ("couldnt open post fd");
+        {
+            std::cout << "errno code: " << errno << std::endl;
+            throw ("couldnt open post fd"); // why ?
+        }
     }
     catch (const char* msg)
     {
@@ -427,9 +467,36 @@ void Request::setUpPostFile()
         this->RequestFile.state = chunk_size;
     }
     this->openRequestFile = true;
+    std::cout << "Post file " << fileName << " has been set up succesfuly" << std::endl;
 }
+
+// check if post path exists and allows POST request.
+bool Request::isValidPostPath(std::vector<Location> _locations)
+{
+    std::string req_path = getRequestPath();
+    std::cout << "post request path is " << req_path << std::endl;
+    for (int i = 0; i < _locations.size(); i++)
+    {
+        if (req_path == _locations[i].getPath())
+        {
+            std::cout << "req_path is : " << req_path << std::endl;
+            std::vector<std::string> allowed = _locations[i].getAllowedMethods();
+            for (int i = 0; i < allowed.size(); i++)
+            {
+                if (allowed[i] == "POST")
+                {
+                    std::cout << "POST IS ALLOWED" << std::endl;
+                    return(true);
+                }
+            }
+        }
+    }
+    std::cout <<  "POST IS NOT ALLOWED FOR ---" << req_path << "---" << std::endl;
+    return (false);
+}
+
 /* this handles the post request Body : uploads the file to server.*/
-void Request::parseRequestBody(char *request, int offset, int readBytes)
+void Request::parseRequestBody(char *request, int offset, int readBytes, std::vector<Location> locations)
 {
     std::cout << "parseRequestBody called" << std::endl;
     // if request type is not post ignore
@@ -440,14 +507,20 @@ void Request::parseRequestBody(char *request, int offset, int readBytes)
         return ;
     }
     // BELW CODE ONLY HANDLES POST.
+    // new code [15/06] check if post method is allowed.
+    // only allow uploads to
+    if (!isValidPostPath(locations))
+        throw (2);
     if (!openRequestFile)
         setUpPostFile();
     switch(this->RequestFile.type)
     {
         case Content_Length:
+            std::cout << "parsing method Content-lengh" << std::endl;
             contentLengthBody(request, offset, readBytes);
             break;
         case Chunked:
+            std::cout << "parsing method chunked " << std::endl;
             chunkedBody(request, offset, readBytes);
             break;
         default:
@@ -457,9 +530,9 @@ void Request::parseRequestBody(char *request, int offset, int readBytes)
 
 void Request::chunkedBody(char *request, int offset, int readBytes)
 {
-    std::cout << "TODO chunkedBody" << std::endl;
-    if (!openRequestFile)
-        setUpPostFile();
+    std::cout << "TODO chunkedBody : " << std::endl;
+    /*if (!openRequestFile)
+        setUpPostFile();*/
     //request[readBytes] = '\0';
     //std::cout << "Request body ==========================================" << request + offset << std::endl;
     //exit (1);
@@ -532,6 +605,7 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                 this->MainState = Done;
                 this->SubState = doneParsing;
                 close(this->RequestFile.fd);
+                this->openRequestFile = false;
                 break;
             case chunk_done:
                 std::cout << "chunk transfer is done ignoring the remaining data" << std::endl;
@@ -539,6 +613,7 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                 this->MainState = Done;
                 this->SubState = doneParsing;
                 close(this->RequestFile.fd);
+                this->openRequestFile = false;
                 break;
         }
     }
@@ -548,13 +623,17 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
 {
     int writtenData = write(this->RequestFile.fd, request + offset,readBytes - offset);
     if (writtenData != readBytes - offset)
+    {
+        close(this->RequestFile.fd);
         throw ("partial/failed write : internal server error");
+    }
     this->RequestFile.offset += writtenData;
     // checck if done.
     if (this->RequestFile.offset == this->RequestFile.size)
     {
-        std::cout << "File received completly" << std::endl;
+        std::cout << "File received completely" << std::endl;
         close(this->RequestFile.fd);
+        this->openRequestFile = false;
         this->MainState = Done;
     }
 }
@@ -584,12 +663,13 @@ std::string Request::getExtension()
     };
     return contentMap[extension];
 }
-
+ // deprecated:
 int Request::getPostFd()
 {
-    // generate a unique name.
+    /*
+    if (this->openPostfd)
+        return (this->Postfd);
     std::string fileName = generateUniqueFilename();
-    //std::string extension = getExtension(); 
     fileName += getExtension();
     std::cout << "filename for upload ist " << fileName << std::endl;
     try {
@@ -604,6 +684,8 @@ int Request::getPostFd()
     }
     this->openPostfd = true;
     return this->Postfd;
+    */
+    return (this->RequestFile.fd);
 }
 // to avoid copying the map each time. 
 std::string Request::getMapAtIndex(unsigned int index)

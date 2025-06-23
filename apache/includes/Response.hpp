@@ -13,6 +13,15 @@ enum  ResponseState{
     sendingBody,
     ResponseDone
 };
+
+struct resp_settings{
+    bool GET;
+    bool POST;
+    bool DELETE;
+    int Locationindex;
+    bool redirected; // e.g : from /images --> /images/
+};
+
 class Response : public AResponse
 {
     private:
@@ -22,6 +31,10 @@ class Response : public AResponse
         bool    chunked;
         bool    openfile;
         int fd;
+        bool settings_set;
+        bool path_set;
+        std::string filePath;
+        struct resp_settings settings;
     public:
 
         Response(const std::string& type, Request *req, std::map<std::string, std::string>* status, int client_fd);
@@ -32,13 +45,15 @@ class Response : public AResponse
         std::string getTime();
         std::string makeRspHeader();
         std::string RspHeader(long long cLength, unsigned int code);
-        std::string RspStatusline(unsigned int code); 
+        std::string RspStatusline(unsigned int code);
         std::string requestPageBody(const char* path);
+        std::string getPagePath(std::string,  std::vector<Location>);
         void    sendHeader(const char *, int, bool);
         void    sendPage(const char *path, int cfd, bool redirection);
         void    handleErrorPage(const char *path, int cfd);
         const char* getRes() const;
         size_t  getSize();
+        void setResponseSettings(Location& _location, int);
         int getFd(const char *);
         bool isAlive() const;
         void sendChunkHeader (int, int);
@@ -50,12 +65,27 @@ class Response : public AResponse
         void reset()
         {
             std::cout << "reseting Response..." << std::endl;
-            sentBytes = 0;
-            fileOffset = 0;
-            state = sendingheader;
-            openfile = false;
+            this->sentBytes = 0;
+            this->fileOffset = 0;
+            this->state = sendingheader;
+            this->openfile = false;
+            this->settings_set = false;
+            this->path_set = false;
+            this->settings.redirected = false;
+            this->chunked = false;
         }
         void deleteResponse(int, Request*);
         void sendNotFoundPage(const char* path, int cfd, bool redir);
         std::string getPagePath(const char *, std::vector<Location>);
+        void notAllowedGetResponse(int);
+        void accessDeniedResponsePage(std::map<int, std::string>&);
+        void notFoundResponsePage(std::map<int, std::string>&);
+        bool handlePathRedirection(std::string, std::vector<Location>&);
+        std::string getPagePath2(std::string , std::vector<Location>&);
+        std::string getPath();
+        void errorResponsePage(int, std::map<int, std::string>&, int );
+        std::string getFolderName(const std::string& path);
+        void redirectResponse(int, const char*);
+        void handleBadRequest(int, Request*);
+        void sendTimedOutResponse(int);
 };

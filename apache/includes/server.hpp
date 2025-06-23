@@ -67,4 +67,6 @@ class Server{
         void sendBadRequest(int);
         bool clientWasRemoved(int);
         bool clientExist(int);
+        void notAllowedPostResponse(int cfd);
+        void giveWritePermissions(int);
 };

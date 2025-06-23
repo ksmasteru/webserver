@@ -69,6 +69,7 @@ int makePassiveSocket(struct sockaddr_in *server_addr)
 }
 
 // pass in the actual host:port combo.
+// why is the first host empty ?
 int makePassiveSocket(struct sockaddr_in *server_addr, std::string host, int port)
 {
     int server_fd;
@@ -79,19 +80,20 @@ int makePassiveSocket(struct sockaddr_in *server_addr, std::string host, int por
         std::cerr << "Error creating socket" << std::endl;
         return -1;
     }
+    std::cout << "passive socket made for port : " << port << " and host " << host << std::endl;
     int opt = 1;
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
     std::memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
-    //server_addr->sin_addr.s_addr = INADDR_ANY;
+    server_addr->sin_addr.s_addr = INADDR_ANY;
     server_addr->sin_port = htons(port);
-    if (inet_pton(AF_INET, host.c_str(), &(server_addr->sin_addr)) <= 0)
+    /*if (inet_pton(AF_INET, host.c_str(), &(server_addr->sin_addr)) <= 0)
     {
         perror("Invalid address");
         close(server_fd);
         return -1;
-    }
+    }/*/
     if (bind(server_fd, (struct sockaddr *)server_addr, sizeof(*server_addr)) == -1)
     {
         std::cerr << "Error binding socket port: " << port << std::endl;

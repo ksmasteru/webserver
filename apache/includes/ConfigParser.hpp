@@ -113,11 +113,12 @@ public:
                 if (host.empty())
                     throw std::runtime_error("Error: Missing port number in listen directive");
                 std::stringstream ss(host);
-                while (getline(ss, host, ' '))
+                while (getline(ss, host, ' ')) /*had l3iba hna katzid empty host flowel.*/
                 {
                     try
                     {
                         server.setHost(host);
+                        std::cout << "added for host " << host << std::endl;
                     }
                     catch (...)
                     {

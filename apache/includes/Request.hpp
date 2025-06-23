@@ -5,7 +5,9 @@
 #include <iostream>
 #include <fcntl.h>
 #include "../includes/utils.hpp"
+#include "Location.hpp"
 
+class Location;
 enum Chunk_State{
     chunk_size,
     CR1,
@@ -64,6 +66,7 @@ enum Transfer_Type{
 };
 
 typedef struct s_FILE{
+    std::string fileName;
     int fd;
     unsigned long offset;
     Transfer_Type type;
@@ -73,15 +76,16 @@ typedef struct s_FILE{
     size_t toWrite;// number of characters to write on a chuck
 }t_FILE;
 
+struct requestErrors{
+    bool notAllowed;
+    bool badRequest;
+};
+
 class  Request{ // read event.
     std::string RawRequest;
     std::string type;
     std::string qkey;
-    t_FILE  RequestFile;
-    bool openRequestFile;
-    bool openPostfd;
     std::string qvalue;
-    mainState MainState;
     subState SubState;
     char        httpGreater;
     char        httpMinor;
@@ -99,7 +103,12 @@ class  Request{ // read event.
     Request(Request& rhs, int bytesread);
     Request& operator=(Request& rhs);
     std::map<int, std::string> parse_map;
+    
     public:
+    t_FILE  RequestFile;
+    bool openRequestFile;
+    struct requestErrors _requestErrors;
+    mainState MainState;
     Request();
     std::string getHttpVersion();
     void    setUpPostFile();
@@ -107,9 +116,9 @@ class  Request{ // read event.
     std::string getRequestPath();
     const std::string& getRawRequest() const;
     const std::string& getType() const;
-    void parseRequestHeader(char* request, int readBytes);
+    void parseRequestHeader(char* request, int readBytes, std::vector<Location>);
     void parseRequestLine(char *request, int readBytes, int &offset);
-    void parseRequestBody(char *request, int offset, int readBytes);
+    void parseRequestBody(char *, int , int, std::vector<Location>);
     std::string getMapAtIndex(unsigned int index);
     void printRequestLine();
     void printHeaderFields();
@@ -121,11 +130,15 @@ class  Request{ // read event.
         type.clear();
         qkey.clear();
         qvalue.clear();
+        RequestFile.fileName.clear();
         MainState = ReadingRequestHeader;
         SubState = start;
         totalReadBytes = 0;
         _bytesread = 0;
         openRequestFile = false;
+        RequestFile.fd = -1; 
+        _requestErrors.notAllowed = false;
+        _requestErrors.badRequest = false;
     }
     int getState(){
         return this->MainState;
@@ -135,4 +148,6 @@ class  Request{ // read event.
     int     getPostFd();
     std::string getExtension();
     ~Request(){}
+    bool    isValidPostPath(std::vector<Location> _locations);
+
 };
