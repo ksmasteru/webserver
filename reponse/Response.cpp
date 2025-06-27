@@ -12,6 +12,7 @@ Response::Response()
     this->state = sendingheader;
     this->path_set = false;
     this->settings_set = false;
+    std::cout << "default constructor" << std::endl;
 }
 
 Response::Response(const std::string& type, Request* req, std::map<std::string, 
@@ -19,6 +20,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 {
     // first checks if the file exist based on this info : fill body header
     // shalow copy of request.
+    std::cout << "fancy constructor" << std::endl;
     fileOffset = 0;
     sentBytes = 0;
     openfile = false;
@@ -1072,6 +1074,7 @@ void Response::mergeCgiResponse()
         std::string full_response = buildCgiResponse();
         this->response.str("");
         this->response << full_response;
+        //!! bad pointing to tmp object.
         this->resp_msg = this->response.str().c_str();
         }
 }

@@ -92,9 +92,9 @@ void Server::addNewClient(int epoll_fd, int socket_fd)
     // create a connection object and att it to <fd, connection>map;
     struct timeval startTime;
     gettimeofday(&startTime, nullptr);
-    Connection* new_client = new Connection(client_fd, startTime);
+    Connection* new_client = new Connection(client_fd, startTime); // still not freed
     // makes no sense.
-    this->clients[client_fd] = new_client;  
+    this->clients[client_fd] = new_client;
 }
 
 void Server::removeClient(int   fd)

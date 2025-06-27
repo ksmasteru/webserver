@@ -28,6 +28,9 @@ class Server{
     public:
         Server();
         ~Server(){
+            std::map<int , Connection*>::iterator it;
+            for (it = this->clients.begin(); it != this->clients.end(); ++it)
+                delete it->second;
         }
         
         std::vector<int> serverSockets;
