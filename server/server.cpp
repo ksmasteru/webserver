@@ -166,6 +166,7 @@ void Server::handleReadEvent(int fd)
             }
             catch (const char *msg)
             {
+                std::cout << "parse request header failed" << std::endl;
                 // here in case of error set response to done with a flag to type of error
                 // to be send by response;
                 

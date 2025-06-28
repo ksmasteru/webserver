@@ -16,7 +16,7 @@ server:
       403:  ./assets/errors/403.html
       504:  ./assets/errors/504.html
     location :
-      type : /
+      type :
       directoryListing : on
       root_directory: ./assets/web-folder/web
       allowed_methods:

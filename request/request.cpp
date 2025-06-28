@@ -94,8 +94,6 @@ void Request::parseRequestHeader(char* request, int readBytes, std::vector<Locat
 {
     // each time enters with a new char buffer
 
-    request[readBytes - 1] = 0;
-    std::cout << "header ist : " << request << std::endl;
     char c;
     this->fullpath = request;
     int offset = 0;

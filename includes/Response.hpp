@@ -18,8 +18,10 @@ struct resp_settings{
     bool GET;
     bool POST;
     bool DELETE;
+    bool autoIndexed;
     int Locationindex;
     bool redirected; // e.g : from /images --> /images/
+    bool dirUrl;
 };
 
 class Response : public AResponse
@@ -53,7 +55,7 @@ class Response : public AResponse
         void    handleErrorPage(const char *path, int cfd);
         const char* getRes() const;
         size_t  getSize();
-        void setResponseSettings(Location& _location, int);
+        void setResponseSettings(Location& _location, int, bool);
         int getFd(const char *);
         bool isAlive() const;
         void sendChunkHeader (int, int);
@@ -72,6 +74,8 @@ class Response : public AResponse
             this->settings_set = false;
             this->path_set = false;
             this->settings.redirected = false;
+            this->settings.autoIndexed = false;
+            this->settings.dirUrl = false;
             this->chunked = false;
         }
         void deleteResponse(int, Request*);
@@ -110,5 +114,8 @@ class Response : public AResponse
         bool isCgiScript(const std::string &requestPath);
         std::string getStatusMessage(int);
         
+        // code for directory listing
+        void DirectoryListing(int, std::string&);
+        std::map<std::string, std::string> getDirectoryEntries(std::string&);
         
 };

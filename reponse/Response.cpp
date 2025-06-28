@@ -2,7 +2,8 @@
 #include "../includes/cgiHandler.hpp"
 #include <fstream>
 #include <sys/stat.h>
-
+#include <dirent.h>
+#include <iomanip>
 Response::Response()
 {
     fileOffset = 0;
@@ -12,6 +13,8 @@ Response::Response()
     this->state = sendingheader;
     this->path_set = false;
     this->settings_set = false;
+    this->settings.autoIndexed = false;
+    this->settings.dirUrl = false;
 }
 
 Response::Response(const std::string& type, Request* req, std::map<std::string, 
@@ -26,6 +29,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
     this->state = sendingheader;
     this->path_set = false;
     this->settings_set = false;
+    this->settings.dirUrl = false;
 }
 
 // response header should be lsat to get filled.
@@ -76,7 +80,7 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
     std::ostringstream header;
     if (!chunked)
     {
-        header  << RspStatusline(code)
+        header << RspStatusline(code)
             << "Date: " + getTime() + " \r\n"
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
@@ -314,9 +318,11 @@ std::string getFileName(std::string path, std::string folderName)
     return (path.substr(folderName.size()));
 }
 
-void Response::setResponseSettings(Location& _location, int index)
+void Response::setResponseSettings(Location& _location, int index, bool dirUrl)
 {
     std::vector<std::string> methods = _location.getAllowedMethods();
+    this->settings.autoIndexed = _location.getAutoindex();
+    this->settings.dirUrl = dirUrl;
     this->settings.Locationindex = index;
     for (size_t i = 0; i < methods.size(); i++)
     {
@@ -347,8 +353,13 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             {
                 std::cout << "First condition" << std::endl;
                 std::cout << "to return " << locations[i].getIndex() << std::endl;
-                //exit(1);
-                setResponseSettings(locations[i], i);
+                setResponseSettings(locations[i], i, true);
+                if (this->settings.autoIndexed)
+                {
+                    std::cout << "auto index detected ..." << std::endl;
+                    std::cout << "todo directory listing " << locations[i].getRoot() << std::endl;
+                    return (locations[i].getRoot());
+                }
                 return(locations[i].getIndex());
             }
             else if (locations[i].getPath() == path && locations[i].getPath() != "/")
@@ -356,17 +367,17 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
                 std::cout << "Second condition : redirection" << std::endl;
                 std::cout << "to return : " << locations[i].getPath() + "/" << std::endl;
                 //exit(1);
-                setResponseSettings(locations[i], i);
+                setResponseSettings(locations[i], i, true);
                 this->res_data.status = 301;
                 this->settings.redirected = true;
                 return (locations[i].getPath() + "/"); // images/
             }
             else if (locations[i].getPath() == folderName)
             {
-                std::cout << "second condition" << std::endl;
+                std::cout << "third condition" << std::endl;
                 std::cout << "to return : " << locations[i].getRoot() + fileName << std::endl;
                 //exit(1);
-                setResponseSettings(locations[i], i);
+                setResponseSettings(locations[i], i, false);
                 return (locations[i].getRoot() + fileName);
             }
         }
@@ -377,9 +388,12 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
         if (locations[i].getPath() == "/")
         {
             //std::cout << "third condition" << std::endl;
-            setResponseSettings(locations[i], i);
             if (path == "/")
+            {
+                setResponseSettings(locations[i], i, true);
                 return (locations[i].getIndex());
+            }
+            setResponseSettings(locations[i], i, true);
             return (locations[i].getRoot() + path);
         }
     }
@@ -746,6 +760,8 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
         this->filePath = getPagePath2(req->getRequestPath(), locations);
         std::cout << "file path is: " << this->filePath << std::endl;
         this->path_set = true;
+        if (this->settings.autoIndexed && this->settings.dirUrl)
+            return (DirectoryListing(cfd, this->filePath));
         if (!this->settings.GET)
             return (notAllowedGetResponse(cfd));
         if (this->settings.redirected == true)
@@ -1091,4 +1107,93 @@ bool Response::isCgiScript(const std::string &requestPath)
             extension == ".rb" ||
             extension == ".sh" ||
             extension == ".cgi");
+}
+
+std::string formatDate(time_t rawtime)
+{
+    char buffer[20];
+    std::tm* timeinfo = std::localtime(&rawtime);
+    std::strftime(buffer, sizeof(buffer), "%d-%b-%Y %H:%M", timeinfo);
+    return std::string(buffer);
+}
+
+std::string humanSize(off_t size)
+{
+    std::ostringstream oss;
+    if (size >= (1 << 20))
+        oss << std::fixed << std::setprecision(1) << (size / (1024.0 * 1024)) << "M";
+    else if (size >= (1 << 10))
+        oss << (size / 1024) << "K";
+    else
+        oss << size << "B";
+    return oss.str();
+}
+
+// <filname.jpg, 12-MAR-2025 10:15 134K>
+// path  is ./pages/images
+std::map<std::string, std::string> Response::getDirectoryEntries(std::string& path)
+{
+    std::cout << "directory in which we are listing... " << path << std::endl;
+    std::map<std::string, std::string> res;
+    std::string fullpath;
+    std::cout << "directory to open is " << path << std::endl;
+    DIR* dir = opendir(path.c_str());
+    struct stat st;
+    if (dir == nullptr)
+    {
+        throw ("opendir");
+    }
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr)
+    {
+        fullpath = path + "/" + entry->d_name;
+        std::cout << "fullpath is " << fullpath << std::endl;
+        if (stat(fullpath.c_str(), &st) == 0 && S_ISREG(st.st_mode))
+        {
+            std::ostringstream line;
+            line << std::setw(20) << formatDate(st.st_mtime)
+                << std::right << std::setw(6) << humanSize(st.st_size);
+            res.insert(std::make_pair(entry->d_name, line.str()));
+        }
+    }
+    closedir(dir);
+    return res;
+}
+// dir = ./pages/images
+void Response::DirectoryListing(int cfd, std::string& dir)
+{
+
+    std::map<std::string, std::string> entries_info = getDirectoryEntries(dir);
+    std::ostringstream body;
+
+    body << "<html>\n"
+        << "<head><title>Index of " << dir << "</title></head>\n"
+        << "<body>\n"
+        << "<h1>Index of " << dir << "</h1><hr><pre>\n"
+        << "<a href=\"../\">../</a>\n";
+
+// <a href="feather.jpg">feather.jpg</a>   03-Jun-2025 21:53   46K
+
+    std::map<std::string, std::string>::iterator it;
+    for (it = entries_info.begin(); it != entries_info.end(); ++it)
+        body << "<a href=\"" << it->first << "\">" << it->first << "</a>" << std::setw(20) << it->second << "\n";
+        body << "</pre><hr>\n"
+             << "</body>\n"
+             << "</html>\n";
+
+    std::string body_str = body.str();
+    this->res_data.contentType = "text/html";
+    chunked = false;
+    std::string header = RspHeader(body_str.size(),200);
+    if (send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL) == -1)
+    {
+        this->state = ResponseDone;
+        throw(cfd);
+    }
+    if (send(cfd, body_str.c_str(), body_str.length(),MSG_NOSIGNAL) == -1)
+    {
+        this->state = ResponseDone;
+        throw(cfd);
+    }
+    this->state = ResponseDone;
 }
