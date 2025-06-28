@@ -44,20 +44,20 @@ class Response : public AResponse
         void    getFileReady(int fd);
         std::string getTime();
         std::string makeRspHeader();
-        std::string RspHeader(long long cLength, unsigned int code);
+        std::string RspHeader(long long cLength, unsigned int code, Request*);
         std::string RspStatusline(unsigned int code);
         std::string requestPageBody(const char* path);
         std::string getPagePath(std::string,  std::vector<Location>);
-        void    sendHeader(const char *, int, bool);
-        void    sendPage(const char *path, int cfd, bool redirection);
-        void    handleErrorPage(const char *path, int cfd);
+        void    sendHeader(const char *, int, bool, Request*);
+        void    sendPage(const char *path, int cfd, bool redirection, Request*);
+        void    handleErrorPage(const char *path, int cfd, Request*);
         const char* getRes() const;
         size_t  getSize();
         void setResponseSettings(Location& _location, int);
         int getFd(const char *);
         bool isAlive() const;
         void sendChunkHeader (int, int);
-        void successPostResponse(int);
+        void successPostResponse(int, Request);
         int getState(){return this->state;}
         void setState(ResponseState st){
             state = st;
@@ -75,7 +75,7 @@ class Response : public AResponse
             this->chunked = false;
         }
         void deleteResponse(int, Request*);
-        void sendNotFoundPage(const char* path, int cfd, bool redir);
+        void sendNotFoundPage(const char* path, int cfd, bool redir, Request*);
         std::string getPagePath(const char *, std::vector<Location>);
         void notAllowedGetResponse(int);
         void accessDeniedResponsePage(std::map<int, std::string>&);
@@ -83,12 +83,12 @@ class Response : public AResponse
         bool handlePathRedirection(std::string, std::vector<Location>&);
         std::string getPagePath2(std::string , std::vector<Location>&);
         std::string getPath();
-        void errorResponsePage(int, std::map<int, std::string>&, int );
+        void errorResponsePage(int, std::map<int, std::string>&, int , Request*);
         std::string getFolderName(const std::string& path);
         void redirectResponse(int, const char*);
         void handleBadRequest(int, Request*);
-        void sendTimedOutResponse(int);
-        void sendCgiResponse(int);
+        void sendTimedOutResponse(int, Request& );
+        void sendCgiResponse(int, Request*);
 
         // new code for cgi response
         void setCgiBody(const std::string& body);
@@ -110,5 +110,9 @@ class Response : public AResponse
         bool isCgiScript(const std::string &requestPath);
         std::string getStatusMessage(int);
         
-        
+
+        // cookies
+        void addCookiesHeader(std::ostringstream &ofs, Request request);
+        // slak ajmi ma3andk kidir
+        void addCookiesHeaderp(std::ostringstream &ofs, Request* request);
 };

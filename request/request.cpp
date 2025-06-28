@@ -89,6 +89,34 @@ bool unvalidheaderVal(std::string& val)
     return (false);
 }
 
+void Request::parseCookies(std::string cookies)
+{
+    std::cout << "fieldname: " << "cookie" << "\n" << "fielvalue: " << cookies << "\n";
+    std::istringstream ss(cookies);
+    std::string cookie;
+    std::cout << "parseCookies Scope: \n\n";
+    // cookiesMap
+    // what if bad cookies like multiple spaces, bad ; or repetead cookies keys
+    while(getline(ss, cookie, ';'))
+    {
+        trim(cookie);
+        std::vector<std::string> tokens = split(cookie, '=');
+        if (tokens.size() == 2)
+            cookiesMap[tokens[0]] = tokens[1];
+        else
+            return (std::cerr << "error f cookies\n", exit(222));
+
+        std::cout << cookie << std::endl;
+        tokens.clear();
+    }
+    // std::map<std::string, std::string>::iterator it = cookiesMap.begin();
+    // while(it != cookiesMap.end())
+    // {
+    //     std::cout << it->second << std::endl;
+    //     it++;
+    // }
+}
+
 // timeout is the solution;
 void Request::parseRequestHeader(char* request, int readBytes, std::vector<Location> locations)
 {
@@ -192,6 +220,8 @@ void Request::parseRequestHeader(char* request, int readBytes, std::vector<Locat
                     }
                     return ;
                 }
+                if (fieldname == "Cookie")
+                    parseCookies(fieldvalue);
                 headers[fieldname] = fieldvalue;
                 fieldvalue.clear();
                 fieldname.clear();

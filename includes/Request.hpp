@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include "../includes/utils.hpp"
 #include "Location.hpp"
+#include "utils.hpp"
 
 class Location;
 enum Chunk_State{
@@ -102,6 +103,7 @@ class  Request{ // read event.
     Request(Request& rhs, int bytesread);
     Request& operator=(Request& rhs);
     std::map<int, std::string> parse_map;
+
     
     public:
     t_FILE  RequestFile;
@@ -123,6 +125,12 @@ class  Request{ // read event.
     void printHeaderFields();
     void setConnectionType();
     bool isAlive();
+
+
+    // cookies
+    std::map<std::string, std::string> cookiesMap;
+    void parseCookies(std::string cookies);
+
     void reset(){
         std::cout << "reset request ..." << std::endl;
         RawRequest.clear();

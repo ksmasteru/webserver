@@ -2,6 +2,8 @@
 #include "../includes/cgiHandler.hpp"
 #include <fstream>
 #include <sys/stat.h>
+#include <chrono>
+#include <ctime>
 
 Response::Response()
 {
@@ -15,8 +17,7 @@ Response::Response()
     std::cout << "default constructor" << std::endl;
 }
 
-Response::Response(const std::string& type, Request* req, std::map<std::string, 
-std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
+Response::Response(const std::string &type, Request *req, std::map<std::string, std::string> *status, int client_fd) : AResponse(type, req, status, client_fd)
 {
     // first checks if the file exist based on this info : fill body header
     // shalow copy of request.
@@ -33,27 +34,27 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 // response header should be lsat to get filled.
 
 std::string Response::RspStatusline(unsigned int code)
-{ 
+{
     std::string statusCode = intToString(code);
     std::string Response;
-    //403: Forbidden
+    // 403: Forbidden
     switch (code)
     {
-        case 200:
-            Response =  "OK";
-            break;
-        case 403:
-            Response = "Forbidden";
-            break;
-        case 404:
-            Response = "Not Found";
-            break;
-        case 301:
-            Response = "Moved Permanently";
-            break;
-        default:
-            Response = "Not allowed"; 
-            break;
+    case 200:
+        Response = "OK";
+        break;
+    case 403:
+        Response = "Forbidden";
+        break;
+    case 404:
+        Response = "Not Found";
+        break;
+    case 301:
+        Response = "Moved Permanently";
+        break;
+    default:
+        Response = "Not allowed";
+        break;
     }
     /*std::map<std::string, std::string>::iterator it;
     if ((it = statuscodes->find(statusCode)) != statuscodes->end())
@@ -69,80 +70,79 @@ std::string Response::getTime()
     char buffer[100];
     std::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
     return (buffer);
-    
 }
 
-std::string Response::RspHeader(long long cLength, unsigned int code)
+std::string Response::RspHeader(long long cLength, unsigned int code, Request *req)
 {
     std::string alive = "keep-alive"; // will be set later;
     std::ostringstream header;
     if (!chunked)
     {
-        header  << RspStatusline(code)
-            << "Date: " + getTime() + " \r\n"
-            << "Server: apache/2.4.41 (Ubuntu) \r\n"
-            << "Content-Type: " + this->res_data.contentType + " \r\n"
-            //<< "Transfer-Encoding: chunked \r\n"
-            << "Content-Length: " + longlongToString(cLength) + " \r\n"
-            << "Connection: " + alive + " \r\n"
-            << "\r\n";
+        header << RspStatusline(code)
+               << "Date: " + getTime() + " \r\n"
+               << "Server: apache/2.4.41 (Ubuntu) \r\n"
+               << "Content-Type: " + this->res_data.contentType + " \r\n"
+               //<< "Transfer-Encoding: chunked \r\n"
+               << "Content-Length: " + longlongToString(cLength) + " \r\n"
+               << "Connection: " + alive + " \r\n";
     }
     else
     {
-            header  << RspStatusline(code)
-            << "Date: " + getTime() + " \r\n"
-            << "Server: apache/2.4.41 (Ubuntu) \r\n"
-            << "Content-Type: " + this->res_data.contentType + " \r\n"
-            << "Transfer-Encoding: chunked \r\n"
-            << "Connection: " + alive + " \r\n"
-            << "\r\n";
+        header << RspStatusline(code)
+               << "Date: " + getTime() + " \r\n"
+               << "Server: apache/2.4.41 (Ubuntu) \r\n"
+               << "Content-Type: " + this->res_data.contentType + " \r\n"
+               << "Transfer-Encoding: chunked \r\n"
+               << "Connection: " + alive + " \r\n";
     }
+    addCookiesHeaderp(header, req);
+    header << "\r\n";
+    // addCookiesHeader(header, req);
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
     return (head_msg);
 }
 
-std::string content(std::string extension )
+std::string content(std::string extension)
 {
-   std::map<std::string, std::string> contentMap = {
+    std::map<std::string, std::string> contentMap = {
         {"html", "text/html"},
-        {"htm",  "text/html"},
-        {"ico",  "image/png"},
-        {"css",  "text/css"},
-        {"js",   "application/javascript"},
+        {"htm", "text/html"},
+        {"ico", "image/png"},
+        {"css", "text/css"},
+        {"js", "application/javascript"},
         {"json", "application/json"},
-        {"png",  "image/png"},
-        {"jpg",  "image/jpg"},
+        {"png", "image/png"},
+        {"jpg", "image/jpg"},
         {"jpeg", "image/jpeg"},
-        {"gif",  "image/gif"},
-        {"svg",  "image/svg+xml"},
-        {"txt",  "text/plain"},
+        {"gif", "image/gif"},
+        {"svg", "image/svg+xml"},
+        {"txt", "text/plain"},
         {"mp4", "video/mp4"},
-        {"", "text/plain"}
-    };
+        {"", "text/plain"}};
     return contentMap[extension];
 }
 
-void Response::sendHeader(const char *path, int cfd, bool redirection)
+void Response::sendHeader(const char *path, int cfd, bool redirection, Request* req)
 {
-    //size_t extension_pos = this->_request->getRequestPath().rfind(".");// changed.
+    // size_t extension_pos = this->_request->getRequestPath().rfind(".");// changed.
     std::string pathStr = this->getPath();
     size_t extension_pos = pathStr.rfind(".");
     if (redirection) // deprecated
         this->res_data.extension = "html";
     else
-        this->res_data.extension = (extension_pos != std::string::npos) ? pathStr.substr(extension_pos+1) : "";
+        this->res_data.extension = (extension_pos != std::string::npos) ? pathStr.substr(extension_pos + 1) : "";
     this->res_data.contentType = content(this->res_data.extension);
     std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
     struct stat st;
-    stat(path ,&st);
+    stat(path, &st);
     this->res_data.clength = st.st_size; // ! overflow
-    //std::cout << "content length is " << this->res_data.clength << std::endl;
+    // std::cout << "content length is " << this->res_data.clength << std::endl;
     if (this->res_data.clength > INT16_MAX)
         chunked = true;
     else
         chunked = false;
-    std::string header = RspHeader(this->res_data.clength, this->res_data.status);
+    std::string header = RspHeader(this->res_data.clength, this->res_data.status, req);
     int sent = send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL);
     // header is guaranted to be less than buffer size.
     if (sent == -1)
@@ -150,11 +150,11 @@ void Response::sendHeader(const char *path, int cfd, bool redirection)
         this->state = ResponseDone;
         close(this->fd);
         openfile = false;
-        throw (cfd);
+        throw(cfd);
     }
     sentBytes += sent;
-    //std::cout << "sent " << sent << std::endl;
-    // setting new stat for the response
+    // std::cout << "sent " << sent << std::endl;
+    //  setting new stat for the response
     this->state = sendingBody;
 }
 
@@ -162,39 +162,39 @@ void Response::getFileReady(int fd)
 {
     off_t new_offset = lseek(fd, fileOffset, SEEK_SET);
     if (new_offset == -1)
-        throw ("bad file seek");
+        throw("bad file seek");
 }
 
-void Response::sendChunkHeader (int cfd, int readBytes)
+void Response::sendChunkHeader(int cfd, int readBytes)
 {
     std::stringstream ss;
-    ss << std::hex << readBytes << "\r\n";  // Convert to hexadecimal
+    ss << std::hex << readBytes << "\r\n"; // Convert to hexadecimal
     std::string hexStr = ss.str();
-    //std::cout << "chunked header " << hexStr << "size of header" << hexStr.length() <<std::endl;
+    // std::cout << "chunked header " << hexStr << "size of header" << hexStr.length() <<std::endl;
     if (send(cfd, hexStr.c_str(), hexStr.length(), MSG_NOSIGNAL) == -1)
     {
-        close (this->fd);
+        close(this->fd);
         openfile = false;
         this->state = ResponseDone;
         std::cout << "closing connection on socket " << cfd << std::endl;
-        throw (cfd);
+        throw(cfd);
     }
 }
 
 int Response::getFd(const char *path)
 {
     if (openfile)
-    return fd;
+        return fd;
     this->fd = open(path, O_RDONLY);
     if (this->fd == -1)
-        throw ("couldnt open file");
+        throw("couldnt open file");
     openfile = true;
     return this->fd;
 }
 
 // when sending a video opt for chunked simply because it is hard to
 // store its content lenght in a variable --> overflow == closedCOnnection
-void Response::sendPage(const char *path, int cfd, bool redirection)
+void Response::sendPage(const char *path, int cfd, bool redirection, Request* req)
 {
     // you could at the start open the file and keep it open
     // this way you dont have to lseek or multiple open close.
@@ -203,28 +203,28 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     sentBytes = 0;
     if (this->getState() == sendingheader)
     {
-        //std::cout << "sending header" << std::endl;
-        sendHeader(path, cfd, redirection);
+        // std::cout << "sending header" << std::endl;
+        sendHeader(path, cfd, redirection, req);
     }
     int R_BUFF = BUFFER_SIZE - sentBytes;
     if (R_BUFF < 2)
-        throw ("too long of a header?");
+        throw("too long of a header?");
     int fd = getFd(path);
-    char* buffer[R_BUFF];
-    //getFileReady(fd);
+    char *buffer[R_BUFF];
+    // getFileReady(fd);
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
-        throw ("read fail");
-    //std::cout <<  "readbytes are " << readbytes << std::endl;
+        throw("read fail");
+    // std::cout <<  "readbytes are " << readbytes << std::endl;
     if (chunked)
         sendChunkHeader(cfd, readbytes);
-    int sent = send(cfd,  buffer, readbytes, MSG_NOSIGNAL);
+    int sent = send(cfd, buffer, readbytes, MSG_NOSIGNAL);
     if (sent == -1)
     {
-        close (fd);
+        close(fd);
         openfile = false;
         this->state = ResponseDone;
-        throw ("send fail 1");
+        throw("send fail 1");
     }
     fileOffset += sent;
     if (chunked)
@@ -233,9 +233,9 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
             std::cout << "closing connection on " << cfd << std::endl;
             this->openfile = false;
             this->state = ResponseDone;
-            close (fd);
-            throw (cfd);
-        } 
+            close(fd);
+            throw(cfd);
+        }
     if (readbytes < R_BUFF || readbytes == 0)
     {
         this->state = ResponseDone;
@@ -244,54 +244,54 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
             send(cfd, "0\r\n\r\n", 5, 0);
     }
     // reset timer of clients.
-    //std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
+    // std::cout << "sent " << sent << " file offset is " <<  fileOffset << std::endl;
 }
 
 /*to avoid client closing the connection ; which
 will result  in a sigpipe sending the error page
 in one send and thus setting response status to Done*/
-void Response::sendNotFoundPage(const char* path, int cfd, bool redir)
+void Response::sendNotFoundPage(const char *path, int cfd, bool redir, Request* req)
 {
     std::cout << "sending not found page" << std::endl;
     // try sending header then send body.
     // if it doesnt work send both header and body in one.
-    sendHeader(path, cfd, redir);
+    sendHeader(path, cfd, redir, req);
     int R_BUFF = this->res_data.clength;
-    int fd =  getFd(path);
+    int fd = getFd(path);
     char *buffer[R_BUFF];
     int readBytes = read(fd, buffer, R_BUFF);
     if (readBytes < 0)
-        throw ("read fail");
-    std::cout <<  "readbytes are " << readBytes << std::endl;
-    int sent = send(cfd,  buffer, readBytes, MSG_NOSIGNAL);
+        throw("read fail");
+    std::cout << "readbytes are " << readBytes << std::endl;
+    int sent = send(cfd, buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
     {
-        close (fd);
+        close(fd);
         openfile = false;
-        throw ("send fail 1");
+        throw("send fail 1");
     }
     close(fd);
     this->state = ResponseDone;
 }
 
-void Response::handleErrorPage(const char *path, int cfd)
+void Response::handleErrorPage(const char *path, int cfd, Request* req)
 {
     if (access(path, F_OK) == -1)
     {
         this->res_data.status = 404;
-        return (sendNotFoundPage("pages/404.html", cfd, true));
+        return (sendNotFoundPage("pages/404.html", cfd, true, req));
     }
     else if (access(path, R_OK) == -1)
     {
         this->res_data.status = 403;
-        return (sendPage("pages/403.html", cfd, true));
+        return (sendPage("pages/403.html", cfd, true, req));
     }
 }
 
 // returns value form start to /
 // return empty string in failure.
 // /images/ronaldo.png returns /images and set filename to ronaldo.png.
-std::string Response::getFolderName(const std::string& path)
+std::string Response::getFolderName(const std::string &path)
 {
     // skip first /
     size_t pos = path.find('/', 1);
@@ -316,7 +316,7 @@ std::string getFileName(std::string path, std::string folderName)
     return (path.substr(folderName.size()));
 }
 
-void Response::setResponseSettings(Location& _location, int index)
+void Response::setResponseSettings(Location &_location, int index)
 {
     std::vector<std::string> methods = _location.getAllowedMethods();
     this->settings.Locationindex = index;
@@ -331,7 +331,7 @@ void Response::setResponseSettings(Location& _location, int index)
     }
     this->settings_set = true;
 }
-std::string Response::getPagePath2(std::string path, std::vector<Location>& locations)
+std::string Response::getPagePath2(std::string path, std::vector<Location> &locations)
 {
     this->path_set = true;
     this->res_data.status = 200; // initial;
@@ -349,15 +349,15 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             {
                 std::cout << "First condition" << std::endl;
                 std::cout << "to return " << locations[i].getIndex() << std::endl;
-                //exit(1);
+                // exit(1);
                 setResponseSettings(locations[i], i);
-                return(locations[i].getIndex());
+                return (locations[i].getIndex());
             }
             else if (locations[i].getPath() == path && locations[i].getPath() != "/")
             {
                 std::cout << "Second condition : redirection" << std::endl;
                 std::cout << "to return : " << locations[i].getPath() + "/" << std::endl;
-                //exit(1);
+                // exit(1);
                 setResponseSettings(locations[i], i);
                 this->res_data.status = 301;
                 this->settings.redirected = true;
@@ -367,7 +367,7 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             {
                 std::cout << "second condition" << std::endl;
                 std::cout << "to return : " << locations[i].getRoot() + fileName << std::endl;
-                //exit(1);
+                // exit(1);
                 setResponseSettings(locations[i], i);
                 return (locations[i].getRoot() + fileName);
             }
@@ -378,14 +378,14 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
     {
         if (locations[i].getPath() == "/")
         {
-            //std::cout << "third condition" << std::endl;
+            // std::cout << "third condition" << std::endl;
             setResponseSettings(locations[i], i);
             if (path == "/")
                 return (locations[i].getIndex());
             return (locations[i].getRoot() + path);
         }
     }
-    //std::cout << "fourth condition" << std::endl;
+    // std::cout << "fourth condition" << std::endl;
     return ("");
 }
 /*
@@ -431,7 +431,7 @@ void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
     msg << "HTTP/1.1 405 Method Not Allowed \r\n"
         << "Date: " + getTime() + " \r\n"
         << "Server: apache/2.4.41 (mac osx) \r\n"
-        <<  "Content-Length: 0 \r\n" 
+        << "Content-Length: 0 \r\n"
         << allowedMethods + " \r\n"
         << "\r\n";
     std::string resp = msg.str();
@@ -439,12 +439,12 @@ void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
     {
         std::cout << " failed to send " << cfd << std::endl;
         this->state = ResponseDone;
-        throw (cfd);
+        throw(cfd);
     }
     this->state = ResponseDone;
 }
 
-void Response::notFoundResponsePage(std::map<int, std::string>& errorPages)
+void Response::notFoundResponsePage(std::map<int, std::string> &errorPages)
 {
     // EACH  CONFIG file should have a not found page.
     // handle if an errorpage wasnt assigned in the config file
@@ -491,13 +491,13 @@ void Response::notFoundResponsePage(std::map<int, std::string>& errorPages)
 // in location "provided by config file" if path is exact match of location's path
 // return location index attribute (if set) : in  this example it is always set
 // example : path = /pages ; returns index.html.
-bool Response::handlePathRedirection(std::string path, std::vector<Location>& locations)
+bool Response::handlePathRedirection(std::string path, std::vector<Location> &locations)
 {
     int location_index = this->settings.Locationindex;
     return true;
 }
 
-void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages, int errorCode)
+void Response::errorResponsePage(int cfd, std::map<int, std::string> &errorPages, int errorCode, Request* req)
 {
     std::cout << "Error reponse page: " << cfd << std::endl;
     std::map<int, std::string>::iterator it;
@@ -513,15 +513,15 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
     {
         switch (errorCode)
         {
-            case 403:
-                path = "./pages/403.html";
-                break;
-            case 404:
-                path = "./pages/404.html";
-                break;
-            default:
-                std::cerr << "Unset error page: " << errorCode << " not handled yet!" << std::endl;
-                exit(1);
+        case 403:
+            path = "./pages/403.html";
+            break;
+        case 404:
+            path = "./pages/404.html";
+            break;
+        default:
+            std::cerr << "Unset error page: " << errorCode << " not handled yet!" << std::endl;
+            exit(1);
         }
         if (access(path.c_str(), R_OK) == -1)
         {
@@ -530,15 +530,15 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
             throw(cfd);
         }
     }
-    sendHeader(path.c_str(), cfd, true);
+    sendHeader(path.c_str(), cfd, true, req);
     int R_BUFF = this->res_data.clength;
     int fd = getFd(path.c_str());
     char *buffer[R_BUFF];
     int readBytes = read(fd, buffer, R_BUFF);
     if (readBytes < 0)
-        throw ("read fail");
+        throw("read fail");
     std::cout << "readBytes are " << readBytes << std::endl;
-    int sent = send (cfd, buffer, readBytes, MSG_NOSIGNAL);
+    int sent = send(cfd, buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
     {
         close(fd);
@@ -551,7 +551,6 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
     this->state = ResponseDone;
 }
 
-
 void Response::redirectResponse(int cfd, const char *path)
 {
     //  send a redirect 301 with
@@ -563,17 +562,17 @@ void Response::redirectResponse(int cfd, const char *path)
         << location + path + " \r\n"
         << "Connection: close \r\n"
         << "\r\n";
-    
+
     std::string resp = ofs.str();
     if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
     {
         std::cout << "Send fail at redirectResponse" << std::endl;
         this->state = ResponseDone;
-        throw (cfd);
+        throw(cfd);
     }
     this->state = ResponseDone;
 }
-void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request *req, std::map<int, std::string>& errorPages)
+void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request *req, std::map<int, std::string> &errorPages)
 {
     try
     {
@@ -581,8 +580,8 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
         {
             std::cout << "CGI script not executable: " << scriptPath << std::endl;
             this->res_data.status = 403;
-            //return handleErrorPage(scriptPath.c_str(), cfd);
-            return (errorResponsePage(cfd, errorPages, 403));
+            // return handleErrorPage(scriptPath.c_str(), cfd);
+            return (errorResponsePage(cfd, errorPages, 403, req));
         }
 
         Cgi cgiHandler(req, this, scriptPath, 5);
@@ -596,13 +595,13 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
         if (this->isCgiResponse())
         {
             std::cout << "CGI execution successful, sending response" << std::endl;
-            sendCgiResponse(cfd);
+            sendCgiResponse(cfd, req);
         }
         else
         {
             std::cout << "CGI execution failed, no output received" << std::endl;
             this->res_data.status = 500;
-            handleErrorPage(scriptPath.c_str(), cfd);
+            handleErrorPage(scriptPath.c_str(), cfd, req);
         }
     }
     catch (const std::exception &e)
@@ -656,19 +655,18 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
             this->res_data.status = 500;
         }
 
-        handleErrorPage(scriptPath.c_str(), cfd);
+        handleErrorPage(scriptPath.c_str(), cfd, req);
     }
 }
 
-
-void Response::sendCgiResponse(int cfd)
+void Response::sendCgiResponse(int cfd, Request* req)
 {
     std::string httpResponse = this->buildCgiResponse();
     if (httpResponse.empty())
     {
         std::cout << "Empty CGI response, sending 500 error" << std::endl;
         this->res_data.status = 500;
-        return handleErrorPage("", cfd);
+        return handleErrorPage("", cfd, req);
     }
 
     ssize_t totalSent = 0;
@@ -736,8 +734,8 @@ void Response::sendCgiResponse(int cfd)
 // send repsonse and close cfd for GET!!!.
 // this response if for GET REQUEST ONLLY IF IN CONFIG FILE A PATH ISNT ALLOWED GET RETURNS 405 Method Not Allowed
 // web
-void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &errorPages,
-    std::vector<Location> &locations)
+void Response::makeResponse(int cfd, Request *req, std::map<int, std::string> &errorPages,
+                            std::vector<Location> &locations)
 {
     //  will add a new response step called pathSet. or just a flag.
     this->_request = req;
@@ -758,13 +756,13 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
             if (access(this->filePath.c_str(), R_OK) == -1)
             {
                 this->res_data.status = 403;
-                return (errorResponsePage(cfd, errorPages, 403));
+                return (errorResponsePage(cfd, errorPages, 403, req));
             }
         }
         else /*page not found*/
         {
             this->res_data.status = 404;
-            return (errorResponsePage(cfd, errorPages, 404));
+            return (errorResponsePage(cfd, errorPages, 404, req));
         }
     }
 
@@ -774,7 +772,7 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
         std::cout << "Processing CGI request for: " << this->filePath << std::endl;
         return (handleCgiRequest(this->filePath, cfd, req, errorPages));
     }
-    sendPage(this->filePath.c_str(), cfd, false);
+    sendPage(this->filePath.c_str(), cfd, false, req);
 }
 
 void Response::handleBadRequest(int cfd, Request *req)
@@ -796,26 +794,28 @@ void Response::handleBadRequest(int cfd, Request *req)
     if (send(cfd, resp.c_str(), resp.length(), MSG_NOSIGNAL) == -1)
     {
         std::cout << "send error in handle bad Request" << std::endl;
-        throw (1);
+        throw(1);
     }
     this->state = ResponseDone;
 }
 
 // header of a successful post response.
-void Response::successPostResponse(int cfd)
+void Response::successPostResponse(int cfd, Request request)
 {
+    std::map<std::string, std::string>::iterator it = request.cookiesMap.begin();
     std::ostringstream ofs;
-    ofs << "HTTP/1.1 201 Created \r\n"
-        << "Connection: Close \r\n"
+    ofs << "HTTP/1.1 201 Created \r\n";
+    addCookiesHeader(ofs, request);
+    ofs << "Connection: Close \r\n"
         << "\r\n";
     std::string header = ofs.str();
     if (send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL) == -1)
-        throw ("error sending post Response");
-    std::cout << "sent post response" << header <<std::endl;
+        throw("error sending post Response");
+    std::cout << "sent post response" << header << std::endl;
     this->state = ResponseDone;
 }
 
-const char* Response::getRes() const
+const char *Response::getRes() const
 {
     return (this->resp_msg);
 }
@@ -829,7 +829,7 @@ Response::~Response()
 {
 }
 
-size_t  Response::getSize()
+size_t Response::getSize()
 {
     return (this->res_data.totallength);
 }
@@ -839,10 +839,10 @@ std::string Response::getPath()
     return (this->filePath);
 }
 
-void Response::deleteResponse(int cfd, Request* req)
+void Response::deleteResponse(int cfd, Request *req)
 {
     // DELETE /file.html HTTP/1.1
-    // the request object handle the deletion and update code . state. 
+    // the request object handle the deletion and update code . state.
     this->_request = req; // ?
     std::ostringstream ofs;
     std::string path = "pages/" + req->getRequestPath();
@@ -859,52 +859,88 @@ void Response::deleteResponse(int cfd, Request* req)
     }
     switch (this->res_data.status)
     {
-        case 204:
-            ofs << "HTTP/1.1 204 No Content \r\n"
-                << "Date: " + getTime() + " \r\n"
-                << "\r\n";
-            if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
-                throw(cfd);
-            break;
-        case 403:
-            ofs << "HTTP/1.1 403 Forbidden \r\n"
-                << "Date: " + getTime() + " \r\n"
-                << "\r\n";
-            if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
-                throw(cfd);
-            break;
-        case 404:
-            ofs << "HTTP/1.1 404 Not Found \r\n"
-                << "Date: " + getTime() + " \r\n" // needs additional \r\n ?
-                << "\r\n";
-            if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
-                throw(cfd);
-            break;
-        default:
-            break;
+    case 204:
+        ofs << "HTTP/1.1 204 No Content \r\n"
+            << "Date: " + getTime() + " \r\n"
+            << "\r\n";
+        if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
+            throw(cfd);
+        break;
+    case 403:
+        ofs << "HTTP/1.1 403 Forbidden \r\n"
+            << "Date: " + getTime() + " \r\n"
+            << "\r\n";
+        if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
+            throw(cfd);
+        break;
+    case 404:
+        ofs << "HTTP/1.1 404 Not Found \r\n"
+            << "Date: " + getTime() + " \r\n" // needs additional \r\n ?
+            << "\r\n";
+        if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
+            throw(cfd);
+        break;
+    default:
+        break;
     }
     this->state = ResponseDone;
 }
 
-void Response::sendTimedOutResponse(int cfd)
+void Response::addCookiesHeaderp(std::ostringstream &ofs, Request* request)
 {
-    std::ostringstream ofs;
+    std::map<std::string, std::string>::iterator it = request->cookiesMap.begin();
+    if (it == request->cookiesMap.end())
+    {
+        // generate cookies
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        ofs << "Set-Cookie: " << "SessionID=" << std::chrono::system_clock::to_time_t(now) << "\r\n";
+    }
+    else
+    {
+        for (; it != request->cookiesMap.end(); ++it)
+        {
+            ofs << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+        }
+    }
+}
 
-    ofs << "HTTP/1.1 408 Request Timeout\r\n"
-        << "Content-Length: 0\r\n"
+void Response::addCookiesHeader(std::ostringstream &ofs, Request request)
+{
+    std::map<std::string, std::string>::iterator it = request.cookiesMap.begin();
+    if (it == request.cookiesMap.end())
+    {
+        // generate cookies
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        ofs << "Set-Cookie: " << "SessionID=" << std::chrono::system_clock::to_time_t(now) << "\r\n";
+    }
+    else
+    {
+        for (; it != request.cookiesMap.end(); ++it)
+        {
+            ofs << "Set-Cookie: " << it->first << "=" << it->second << "\r\n";
+        }
+    }
+}
+
+void Response::sendTimedOutResponse(int cfd, Request &request)
+{    
+    std::ostringstream ofs;
+    ofs << "HTTP/1.1 408 Request Timeout\r\n";
+    addCookiesHeader(ofs, request);
+    ofs << "Content-Length: 0\r\n"
         << "\r\n";
-    
+
     std::string msg = ofs.str();
-    if (send(cfd, msg.c_str(), msg.length() , MSG_NOSIGNAL) == -1)
-        throw (cfd);
+    if (send(cfd, msg.c_str(), msg.length(), MSG_NOSIGNAL) == -1)
+        throw(cfd);
     this->state = ResponseDone;
 }
 
-
-
 // code for cgi response
 
-void Response::setCgiBody(const std::string& body)
+void Response::setCgiBody(const std::string &body)
 {
     this->cgi_body = body;
     this->is_cgi_response = true;
@@ -913,34 +949,51 @@ void Response::setCgiBody(const std::string& body)
 
 std::string Response::getStatusMessage(int code)
 {
-    if (statuscodes == NULL) {
-        switch(code) {
-            case 200: return "OK";
-            case 201: return "Created";
-            case 204: return "No Content";
-            case 400: return "Bad Request";
-            case 401: return "Unauthorized";
-            case 403: return "Forbidden";
-            case 404: return "Not Found";
-            case 405: return "Method Not Allowed";
-            case 500: return "Internal Server Error";
-            case 501: return "Not Implemented";
-            case 502: return "Bad Gatewa    y";
-            case 503: return "Service Unavailable";
-            case 504: return "Gateway Timeout";
-            default: return "Unknown Status";
+    if (statuscodes == NULL)
+    {
+        switch (code)
+        {
+        case 200:
+            return "OK";
+        case 201:
+            return "Created";
+        case 204:
+            return "No Content";
+        case 400:
+            return "Bad Request";
+        case 401:
+            return "Unauthorized";
+        case 403:
+            return "Forbidden";
+        case 404:
+            return "Not Found";
+        case 405:
+            return "Method Not Allowed";
+        case 500:
+            return "Internal Server Error";
+        case 501:
+            return "Not Implemented";
+        case 502:
+            return "Bad Gatewa    y";
+        case 503:
+            return "Service Unavailable";
+        case 504:
+            return "Gateway Timeout";
+        default:
+            return "Unknown Status";
         }
-    }    
+    }
     std::ostringstream status_key;
-    status_key << code;    
+    status_key << code;
     std::map<std::string, std::string>::iterator it = statuscodes->find(status_key.str());
-    if (it != statuscodes->end()) {
+    if (it != statuscodes->end())
+    {
         return it->second;
     }
     return "Unknown Status";
 }
 
-void Response::addHeader(const std::string& key, const std::string& value)
+void Response::addHeader(const std::string &key, const std::string &value)
 {
     this->cgi_headers[key] = value;
 }
@@ -950,34 +1003,34 @@ void Response::setStatusCode(int code)
     this->status_code = code;
 }
 
-void Response::setContentType(const std::string& contentType)
+void Response::setContentType(const std::string &contentType)
 {
     this->res_data.contentType = contentType;
     this->cgi_headers["Content-Type"] = contentType;
 }
 
 /**
-* Get the CGI body content
-* @return CGI response body
-*/
-const std::string& Response::getCgiBody() const
+ * Get the CGI body content
+ * @return CGI response body
+ */
+const std::string &Response::getCgiBody() const
 {
     return this->cgi_body;
 }
 
 /**
-* Get CGI headers
-* @return Map of CGI headers
-*/
+ * Get CGI headers
+ * @return Map of CGI headers
+ */
 
-const std::map<std::string, std::string>& Response::getCgiHeaders() const
+const std::map<std::string, std::string> &Response::getCgiHeaders() const
 {
     return this->cgi_headers;
 }
 /**
-* Get HTTP status code
-* @return HTTP status code
-*/
+ * Get HTTP status code
+ * @return HTTP status code
+ */
 int Response::getStatusCode() const
 {
     return this->status_code;
@@ -988,59 +1041,86 @@ bool Response::isCgiResponse() const
     return this->is_cgi_response;
 }
 
-void Response::setBody(const std::string& body)
+void Response::setBody(const std::string &body)
 {
-    if (this->is_cgi_response) {
+    if (this->is_cgi_response)
+    {
         setCgiBody(body);
-    } else {
+    }
+    else
+    {
         this->response.str("");
         this->response << body;
         this->res_data.clength = body.length();
-        }
+    }
 }
 
 std::string Response::buildCgiResponse()
 {
-    if (!is_cgi_response) {
-            return "";
-        }
+    if (!is_cgi_response)
+    {
+        return "";
+    }
     std::ostringstream response_stream;
-    response_stream << "HTTP/1.1 " << status_code << " ";    
+    response_stream << "HTTP/1.1 " << status_code << " ";
     std::ostringstream status_key;
-    status_key << status_code;    
-    if (statuscodes != NULL) {
+    status_key << status_code;
+    if (statuscodes != NULL)
+    {
         std::map<std::string, std::string>::iterator it = statuscodes->find(status_key.str());
-    if (it != statuscodes->end()) {
+        if (it != statuscodes->end())
+        {
             response_stream << it->second;
-    } else {
+        }
+        else
+        {
             response_stream << "Unknown Status";
         }
-    } else {
-        switch(status_code) {
-            case 200: response_stream << "OK"; break;
-            case 404: response_stream << "Not Found"; break;
-            case 500: response_stream << "Internal Server Error"; break;
-            case 504: response_stream << "Gateway Timeout"; break;
-            default: response_stream << "Unknown Status"; break;
+    }
+    else
+    {
+        switch (status_code)
+        {
+        case 200:
+            response_stream << "OK";
+            break;
+        case 404:
+            response_stream << "Not Found";
+            break;
+        case 500:
+            response_stream << "Internal Server Error";
+            break;
+        case 504:
+            response_stream << "Gateway Timeout";
+            break;
+        default:
+            response_stream << "Unknown Status";
+            break;
         }
     }
-    response_stream << "\r\n";  
+    response_stream << "\r\n";
     for (std::map<std::string, std::string>::const_iterator header_it = cgi_headers.begin();
-        header_it != cgi_headers.end(); ++header_it) {
+         header_it != cgi_headers.end(); ++header_it)
+    {
         response_stream << header_it->first << ": " << header_it->second << "\r\n";
-    }    
-    if (cgi_headers.find("Content-Length") == cgi_headers.end()) {
+    }
+    if (cgi_headers.find("Content-Length") == cgi_headers.end())
+    {
         response_stream << "Content-Length: " << cgi_body.length() << "\r\n";
-    }    
-    if (cgi_headers.find("Content-Type") == cgi_headers.end()) {
+    }
+    if (cgi_headers.find("Content-Type") == cgi_headers.end())
+    {
         response_stream << "Content-Type: text/html\r\n";
-    }    
-    if (_request && _request->isAlive()) {
+    }
+    if (_request && _request->isAlive())
+    {
         response_stream << "Connection: keep-alive\r\n";
-    } else {
+    }
+    else
+    {
         response_stream << "Connection: close\r\n";
-    }    
-    response_stream << "\r\n"; 
+    }
+    response_stream << "\r\n";
     response_stream << cgi_body;
     return response_stream.str();
 }
@@ -1054,15 +1134,16 @@ void Response::resetCgiData()
     this->res_data.clength = 0;
 }
 
-bool Response::hasCgiHeader(const std::string& headerName) const
+bool Response::hasCgiHeader(const std::string &headerName) const
 {
     return cgi_headers.find(headerName) != cgi_headers.end();
 }
 
-std::string Response::getCgiHeader(const std::string& headerName) const
+std::string Response::getCgiHeader(const std::string &headerName) const
 {
     std::map<std::string, std::string>::const_iterator it = cgi_headers.find(headerName);
-    if (it != cgi_headers.end()) {
+    if (it != cgi_headers.end())
+    {
         return it->second;
     }
     return "";
@@ -1070,13 +1151,14 @@ std::string Response::getCgiHeader(const std::string& headerName) const
 
 void Response::mergeCgiResponse()
 {
-    if (is_cgi_response) {
+    if (is_cgi_response)
+    {
         std::string full_response = buildCgiResponse();
         this->response.str("");
         this->response << full_response;
         //!! bad pointing to tmp object.
         this->resp_msg = this->response.str().c_str();
-        }
+    }
 }
 
 bool Response::isCgiScript(const std::string &requestPath)

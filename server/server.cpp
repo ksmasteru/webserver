@@ -105,6 +105,8 @@ void Server::removeClient(int   fd)
     clients.erase(fd);
 }
 
+
+// not used
 void Server::notAllowedPostResponse(int cfd)
 {
     std::string allowedMethods = "Allow: GET, DELETE";
@@ -224,6 +226,7 @@ void Server::handleReadEvent(int fd)
     }
 }
 
+// not used 
 void Server::sendBadRequest(int fd)
 {
     std::ostringstream msg;
@@ -258,7 +261,7 @@ void Server::handleWriteEvent(int fd)
             int a = unlink(clients[fd]->request.RequestFile.fileName.c_str());
             std::cout << "unlink status " << a << " for : " << clients[fd]->request.RequestFile.fileName << std::endl;
         }
-        this->clients[fd]->response.sendTimedOutResponse(fd);
+        this->clients[fd]->response.sendTimedOutResponse(fd, this->clients[fd]->request);
         // close connection;
         removeClient(fd);
         return ;
@@ -292,7 +295,7 @@ void Server::handleWriteEvent(int fd)
         if (clients[fd]->request.getType().compare("GET") == 0)
             clients[fd]->response.makeResponse(fd, &clients[fd]->request, _errorPages, _locations);
         else if (clients[fd]->request.getType().compare("POST") == 0 && clients[fd]->request.getState() == Done)
-            clients[fd]->response.successPostResponse(fd);
+            clients[fd]->response.successPostResponse(fd, clients[fd]->request);
         else if (clients[fd]->request.getType().compare("DELETE") == 0)
             clients[fd]->response.deleteResponse(fd, &clients[fd]->request);
     }
@@ -305,7 +308,8 @@ void Server::handleWriteEvent(int fd)
     catch (const char *msg) // this should be handled
     {
         std::cout << msg << std::endl;
-        exit(1);
+        // should remove every exit
+        exit(1); // !!
     }
     }
     // reset timeout timer
