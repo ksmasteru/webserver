@@ -2,7 +2,7 @@ NAME := apache
 CC := g++
 CFLAGS := -Wall -Wextra -Werror -std=c++98 -pedantic
 
-SRCS := utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
+SRCS := config/Location.cpp config/ConfigParser.cpp utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
 reponse/Response.cpp server/serverManager.cpp utils/trim.cpp reponse/cgiHandler.cpp \
 
 HEADERS := includes/webserver.hpp includes/AResponse.hpp includes/Iconnect.hpp includes/Response.hpp \
