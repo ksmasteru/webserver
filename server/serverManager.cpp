@@ -24,6 +24,7 @@ bool ServerManager::isServerSocket(int fd)
 
 // return id of the server whose socket match the paramter
 // returns -1 on failure
+// each server has multiple sockets.
 int ServerManager::isServerSocket(int fd)
 {
     for (int i = 0; i < servers.size(); i++)

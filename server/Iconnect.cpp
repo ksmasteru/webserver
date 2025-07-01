@@ -86,14 +86,16 @@ int makePassiveSocket(struct sockaddr_in *server_addr, std::string host, int por
 
     std::memset(server_addr, 0, sizeof(*server_addr));
     server_addr->sin_family = AF_INET;
-    server_addr->sin_addr.s_addr = INADDR_ANY;
+    //server_addr->sin_addr.s_addr = INADDR_ANY;
     server_addr->sin_port = htons(port);
-    /*if (inet_pton(AF_INET, host.c_str(), &(server_addr->sin_addr)) <= 0)
+    if (inet_pton(AF_INET, host.c_str(), &(server_addr->sin_addr)) <= 0)
     {
         perror("Invalid address");
         close(server_fd);
         return -1;
-    }/*/
+    }
+    std::cout << "transforming host : " << host << " into " << server_addr->sin_addr.s_addr << std::endl;
+    std::cout << "transforming port : " << port << " into " <<  server_addr->sin_port << std::endl;
     if (bind(server_fd, (struct sockaddr *)server_addr, sizeof(*server_addr)) == -1)
     {
         std::cerr << "Error binding socket port: " << port << std::endl;
