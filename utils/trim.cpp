@@ -21,7 +21,6 @@ std::string extractValue(const std::string& line, const std::string& directive)
     // Remove leading spaces
     value.erase(0, value.find_first_not_of(" \t"));
     
-    // Remove trailing semicolon if present
     if (!value.empty() && value[value.length() - 1] == ';') {
         value.pop_back();
     }

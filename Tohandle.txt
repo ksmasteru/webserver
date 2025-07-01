@@ -79,3 +79,9 @@ in config file make sure that each location ends with / ! ?
 should requestFile struct be reset during a reset.
 
 !!!! MEMORY LEAKS WHEN TRYing to open /pages/images/feather.jpg%3C/a
+
+
+// to handle : if auto index is off and no index return noot found;\
+
+
+// !!TODO multiple servers : task 1 hour.

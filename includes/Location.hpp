@@ -31,6 +31,7 @@ private:
     std::vector<std::string> _allowedMethods;
     std::map<int, std::string> redirections;
     bool _autoindex;
+    
 
 public:
     Location() : _autoindex(false) {}
