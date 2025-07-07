@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/types.h>

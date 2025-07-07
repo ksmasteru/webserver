@@ -90,19 +90,20 @@ int makePassiveSocket(struct sockaddr_in *server_addr, std::string host, int por
     server_addr->sin_port = htons(port);
     if (inet_pton(AF_INET, host.c_str(), &(server_addr->sin_addr)) <= 0)
     {
-        perror("Invalid address");
+        std::cout << "Invalid port" << std::endl;
         close(server_fd);
         return -1;
     }
     std::cout << "transforming host : " << host << " into " << server_addr->sin_addr.s_addr << std::endl;
     std::cout << "transforming port : " << port << " into " <<  server_addr->sin_port << std::endl;
+    
     if (bind(server_fd, (struct sockaddr *)server_addr, sizeof(*server_addr)) == -1)
     {
         std::cerr << "Error binding socket port: " << port << std::endl;
         std::cerr <<  "host " << host << std::endl;
         return -1; /*Should be a cancelation point ?*/
     }
-
+    
     if (listen(server_fd, SOMAXCONN) == -1)
     {
         std::cerr << "Error listening on socket" << std::endl;

@@ -210,7 +210,9 @@ void Response::sendPage(const char *path, int cfd, bool redirection, Request* re
     if (R_BUFF < 2)
         throw("too long of a header?");
     int fd = getFd(path);
-    char *buffer[R_BUFF];
+    // quick update for flags 7/7-25
+    char buffer[BUFFER_SIZE];
+    buffer[R_BUFF - 1] = '\0';
     // getFileReady(fd);
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
@@ -258,18 +260,25 @@ void Response::sendNotFoundPage(const char *path, int cfd, bool redir, Request* 
     sendHeader(path, cfd, redir, req);
     int R_BUFF = this->res_data.clength;
     int fd = getFd(path);
-    char *buffer[R_BUFF];
+    // update for flags
+    char *buffer = new char[R_BUFF];
+    buffer[R_BUFF - 1] = 0;
     int readBytes = read(fd, buffer, R_BUFF);
     if (readBytes < 0)
+    {
+        delete []buffer;
         throw("read fail");
+    }
     std::cout << "readbytes are " << readBytes << std::endl;
     int sent = send(cfd, buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
     {
+        delete[] buffer;
         close(fd);
         openfile = false;
         throw("send fail 1");
     }
+    delete [] buffer;
     close(fd);
     this->state = ResponseDone;
 }
@@ -1156,7 +1165,7 @@ void Response::mergeCgiResponse()
         std::string full_response = buildCgiResponse();
         this->response.str("");
         this->response << full_response;
-        //!! bad pointing to tmp object.
+        //!! bad pointing to tmp object. very vad
         this->resp_msg = this->response.str().c_str();
     }
 }

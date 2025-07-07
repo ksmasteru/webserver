@@ -59,7 +59,7 @@ void Server::addNewClient()
     set_nonblocking(client_fd);
     // create a connection object and att it to <fd, connection>map;
     struct timeval startTime;
-    gettimeofday(&startTime, nullptr);
+    gettimeofday(&startTime, 0);
     Connection* new_client = new Connection(client_fd, startTime);
     // makes no sense.
     this->clients[client_fd] = new_client;
@@ -91,7 +91,7 @@ void Server::addNewClient(int epoll_fd, int socket_fd)
     set_nonblocking(client_fd);
     // create a connection object and att it to <fd, connection>map;
     struct timeval startTime;
-    gettimeofday(&startTime, nullptr);
+    gettimeofday(&startTime, 0);
     Connection* new_client = new Connection(client_fd, startTime); // still not freed
     // makes no sense.
     this->clients[client_fd] = new_client;
@@ -371,7 +371,7 @@ void Server::unBindTimedOutClients()
     // TOTAL connection; 5min;
     std::map <int, Connection*>::iterator it;
     struct timeval curTime;
-    gettimeofday(&curTime, nullptr);
+    gettimeofday(&curTime, 0);
     //std::cout << "unbind timeout clients launched..." << std::endl;
     for (it = clients.begin(); it != clients.end(); ++it)
     {
@@ -446,7 +446,6 @@ bool Server::clientExist(int cfd)
 
 int Server::run()
 {
-    int client_fd;
     while (true)
     {
         // unbind Timedout now set a flag : handlewrite event is to be responsible to detaching
@@ -461,7 +460,7 @@ int Server::run()
         // delete timedout  clients;
         for (int i = 0; i < num_events; i++)
         {
-            if ((data.events[i].data.fd == data.sfd))
+            if (data.events[i].data.fd == data.sfd)
             {
                 std::cout << "server socket" << std::endl;
                 addNewClient();
@@ -541,13 +540,15 @@ const std::vector<Location> &Server::getLocations() const { return _locations; }
 void Server::print() const
 {
     std::cout << "Server:" << std::endl;
-    for (auto &host : _hosts)
-        std::cout << "  Host: " << host << std::endl;
-    for (int i = 0; i < _ports.size(); i++)
+    for (size_t i = 0 ; i < _hosts.size(); i++)
+        std::cout << " Host: " << _hosts[i] << std::endl;
+    for (size_t i = 0; i < _ports.size(); i++)
         std::cout << "  Port: " << _ports[i] << std::endl;
-    for (const auto &name : _serverNames)
-        std::cout << "  Server Name: " << name << std::endl;
+    for (size_t i = 0 ; i < _serverNames.size(); i++)
+    {
+        std::cout << "  Server Name: " << _serverNames[i] << std::endl;
         std::cout << "  Max Body Size: " << _clientMaxBodySize << std::endl;
+    }
     if (!_errorPages.empty())
     {
         std::cout << "  Error Pages:" << std::endl;
@@ -568,7 +569,7 @@ void Server::print() const
 
 void Server::removePort(std::string port)
 {
-    for (int i = 0; i < _ports.size(); i++)
+    for (size_t i = 0; i < _ports.size(); i++)
     {
         if (_ports[i] == stringToInt(port))
             _ports.erase(_ports.begin() + i);
@@ -577,7 +578,7 @@ void Server::removePort(std::string port)
 
 void Server::removeHost(std::string host)
 {
-    for (int i = 0; i < _hosts.size(); i++)
+    for (size_t i = 0; i < _hosts.size(); i++)
     {
         if (_hosts[i] == host)
             _hosts.erase(_hosts.begin() + i);

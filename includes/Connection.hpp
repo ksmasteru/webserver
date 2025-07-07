@@ -4,7 +4,7 @@
 #include "Response.hpp"
 #include "Request.hpp"
 #include "server.hpp"
- 
+
 // std::map <int, Connection*> map;
 // each client has a connection.
 
@@ -32,7 +32,7 @@ class Connection{
         }
         void    resetTime()
         {
-            gettimeofday(&startTime, nullptr);
+            gettimeofday(&startTime, 0);
         }
         Response response;
         Connection(int client_fd, struct timeval& timeout){
@@ -40,7 +40,7 @@ class Connection{
             _client_fd = client_fd;
             startTime = timeout;
             _writeMode = false;
-            gettimeofday(&connectionTime, nullptr);
+            gettimeofday(&connectionTime, 0);
         }
         void resetConnection(){
         }

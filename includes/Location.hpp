@@ -73,13 +73,21 @@ public:
         if (!_cgiPath.empty())
             std::cout << "    CGI Path: " << _cgiPath << std::endl;
         
-        if (!_allowedMethods.empty()) {
+        //updated for flags
+        /*if (!_allowedMethods.empty()) {
             std::cout << "    Allowed Methods: ";
             for (const auto& method : _allowedMethods) {
                 std::cout << method << " ";
             }
             std::cout << std::endl;
-        }
+        }*/
+       if (!_allowedMethods.empty())
+       {
+            std::cout << " Allowed Methods: ";
+            for (size_t i = 0; i < _allowedMethods.size(); i++)
+                std::cout << _allowedMethods[i] << " ";
+            std::cout << std::endl;
+       }
     }
 };
 
