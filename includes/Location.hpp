@@ -31,9 +31,10 @@ private:
     std::vector<std::string> _allowedMethods;
     std::map<int, std::string> redirections;
     bool _autoindex;
+    int hasRedirection;
 
 public:
-    Location() : _autoindex(false) {}
+    Location() : _autoindex(false), hasRedirection(false) {}
     
     void setPath(const std::string& path) { _path = path; }
     void setRoot(const std::string& root) { _root = root; }
@@ -42,6 +43,7 @@ public:
     void setCgiExtension(const std::string& ext) { _cgiExtension = ext; }
     void setCgiPath(const std::string& path) { _cgiPath = path; }
     void setAutoindex(bool autoindex) { _autoindex = autoindex; }
+    void setRedFlag(bool flag) {hasRedirection = flag; }
     void addAllowedMethod(const std::string& method) {
         _allowedMethods.push_back(method);
     }
@@ -59,6 +61,7 @@ public:
     bool getAutoindex() const { return _autoindex; }
     const std::vector<std::string>& getAllowedMethods() const { return _allowedMethods; }
     std::map<int, std::string> getRedirections() { return redirections; }
+    bool getRedFlag() {return hasRedirection;}
     
     // Debug print
     void print() const {

@@ -288,6 +288,8 @@ void Response::handleErrorPage(const char *path, int cfd, Request* req)
     if (access(path, F_OK) == -1)
     {
         this->res_data.status = 404;
+        // instead of sending the page staticly lets send the error page from the config file
+        // by sending in first param the config error path
         return (sendNotFoundPage("pages/404.html", cfd, true, req));
     }
     else if (access(path, R_OK) == -1)
@@ -397,6 +399,47 @@ std::string Response::getPagePath2(std::string path, std::vector<Location> &loca
     // std::cout << "fourth condition" << std::endl;
     return ("");
 }
+
+
+Location Response::getLocationDirective(std::string path, std::vector<Location> &locations)
+{
+    std::string folderName = getFolderName(path);
+    std::string fileName = getFileName(path, folderName);
+    if (path != "/")
+    {
+        for (size_t i = 0; i < locations.size(); i++)
+        {
+            if (locations[i].getPath() != "/" && locations[i].getPath() + "/" == path)
+            {
+                return (locations[i]);
+            }
+            else if (locations[i].getPath() == path && locations[i].getPath() != "/")
+            {
+                return (locations[i]);
+            }
+            else if (locations[i].getPath() == folderName)
+            {
+                return (locations[i]);
+            }
+        }
+    }
+    /*if no matching location use root.*/
+    for (size_t i = 0; i < locations.size(); i++)
+    {
+        if (locations[i].getPath() == "/")
+        {
+            // std::cout << "third condition" << std::endl;
+            if (path == "/")
+                return (locations[i]);
+            return (locations[i]);
+        }
+    }
+    // std::cout << "fourth condition" << std::endl;
+    // exit(18);
+    return (locations[0]);
+}
+
+
 /*
 void Response::notAllowedResponse(int cfd)
 {
@@ -426,6 +469,7 @@ void Response::notAllowedResponse(int cfd)
 
 void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
 {
+//  //
     std::string allowedMethods = "Allow: ";
     if (this->settings.POST)
         allowedMethods += "POST ,";
@@ -560,27 +604,31 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string> &errorPages
     this->state = ResponseDone;
 }
 
-void Response::redirectResponse(int cfd, const char *path)
+void Response::redirectResponse(int cfd, std::string newPath)
 {
-    //  send a redirect 301 with
     std::cout << "----------redirectResponse called--------" << std::endl;
     this->settings.redirected = false;
+
+    std::cout << newPath << "\n\n";
     std::ostringstream ofs;
-    std::string location = "location: ";
-    ofs << "HTTP/1.1 301 Moved Permanently \r\n"
-        << location + path + " \r\n"
-        << "Connection: close \r\n"
+    ofs << "HTTP/1.1 301 Moved Permanently\r\n"
+        << "Location: " << newPath  << "\r\n"
+        << "Content-Length: 0\r\n"
+        << "Connection: close\r\n"
         << "\r\n";
 
     std::string resp = ofs.str();
     if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
     {
-        std::cout << "Send fail at redirectResponse" << std::endl;
+        std::cerr << "Send fail at redirectResponse" << std::endl;
         this->state = ResponseDone;
         throw(cfd);
     }
+
     this->state = ResponseDone;
 }
+
+
 void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request *req, std::map<int, std::string> &errorPages)
 {
     try
@@ -739,6 +787,11 @@ void Response::sendCgiResponse(int cfd, Request* req)
     }
 }
 
+std::string getNewPath(Location location)
+{
+    return location.getRedirections()[301];
+}
+
 // ?? something missing
 // send repsonse and close cfd for GET!!!.
 // this response if for GET REQUEST ONLLY IF IN CONFIG FILE A PATH ISNT ALLOWED GET RETURNS 405 Method Not Allowed
@@ -749,16 +802,36 @@ void Response::makeResponse(int cfd, Request *req, std::map<int, std::string> &e
     //  will add a new response step called pathSet. or just a flag.
     this->_request = req;
     this->settings.redirected = false;
+    // add to request path / if not provided with the request
+    std::string requestPath = req->getRequestPath();
+    if (requestPath[requestPath.size() - 1] != '/')
+        requestPath += '/';
+    // check for redirection
+    Location location = getLocationDirective(requestPath, locations);
+    // exit(19);
+    if (location.getRedFlag() == true)
+        this->settings.redirected = true;
+        // exit(111);
     std::cout << "make response called" << std::endl;
     if (!this->path_set)
     {
-        this->filePath = getPagePath2(req->getRequestPath(), locations);
+        this->filePath = getPagePath2(requestPath, locations);
         std::cout << "file path is: " << this->filePath << std::endl;
         this->path_set = true;
+        if (this->settings.redirected)
+        {
+            std::string newPath = getNewPath(location);
+            std::cout << newPath << "\n\n";
+            return (this->redirectResponse(cfd, newPath));
+        }
+        // exit(5);
         if (!this->settings.GET)
             return (notAllowedGetResponse(cfd));
-        if (this->settings.redirected == true)
-            return (redirectResponse(cfd, this->filePath.c_str()));
+        // if (this->settings.redirected == true)
+        // {
+        //     // exit(111);
+        //     return (redirectResponse(cfd, this->filePath.c_str()));
+        // }
         // checking if the path actualy exist and allowed to be accessed.
         if (access(this->filePath.c_str(), F_OK) == 0)
         {

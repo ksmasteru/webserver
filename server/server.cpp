@@ -107,27 +107,27 @@ void Server::removeClient(int   fd)
 
 
 // not used
-void Server::notAllowedPostResponse(int cfd)
-{
-    std::string allowedMethods = "Allow: GET, DELETE";
-    std::ostringstream msg;
-    /*HTTP/1.1 405 Method Not Allowed
-    Content-Length: 0
-    Date: Fri, 28 Jun 2024 14:30:31 GMT
-    Server: ECLF (nyd/D179)
-    Allow: GET, POST, HEAD*/
-    msg << "HTTP/1.1 405 Method Not Allowed \r\n"
-        << "Server: apache/2.4.41 (mac osx) \r\n"
-        <<  "Content-Length: 0 \r\n" 
-        << allowedMethods + " \r\n"
-        << "\r\n";
-    std::string resp = msg.str();
-    if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
-    {
-        std::cout << " failed to send " << cfd << std::endl;
-        throw (cfd);
-    }
-}
+// void Server::notAllowedPostResponse(int cfd)
+// {
+//     std::string allowedMethods = "Allow: GET, DELETE";
+//     std::ostringstream msg;
+//     /*HTTP/1.1 405 Method Not Allowed
+//     Content-Length: 0
+//     Date: Fri, 28 Jun 2024 14:30:31 GMT
+//     Server: ECLF (nyd/D179)
+//     Allow: GET, POST, HEAD*/
+//     msg << "HTTP/1.1 405 Method Not Allowed \r\n"
+//         << "Server: apache/2.4.41 (mac osx) \r\n"
+//         <<  "Content-Length: 0 \r\n" 
+//         << allowedMethods + " \r\n"
+//         << "\r\n";
+//     std::string resp = msg.str();
+//     if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
+//     {
+//         std::cout << " failed to send " << cfd << std::endl;
+//         throw (cfd);
+//     }
+// }
 void Server::handleReadEvent(int fd)
 {
     std::cout << "new read event for fd " << fd << std::endl;
@@ -621,9 +621,10 @@ int main(int ac, char **av)
         configParser.parse(confFile);
         configParser.printConfig();
     }
-    catch (const char *msg)
+    catch (std::exception& e)
     {
-        std::cout << msg << std::endl;
+        std::cout << e.what() << std::endl;
+        exit(1);
     }
     try 
     {

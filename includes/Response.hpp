@@ -85,7 +85,7 @@ class Response : public AResponse
         std::string getPath();
         void errorResponsePage(int, std::map<int, std::string>&, int , Request*);
         std::string getFolderName(const std::string& path);
-        void redirectResponse(int, const char*);
+        void redirectResponse(int cfd, std::string newPath);
         void handleBadRequest(int, Request*);
         void sendTimedOutResponse(int, Request& );
         void sendCgiResponse(int, Request*);
@@ -115,4 +115,9 @@ class Response : public AResponse
         void addCookiesHeader(std::ostringstream &ofs, Request request);
         // slak ajmi ma3andk kidir
         void addCookiesHeaderp(std::ostringstream &ofs, Request* request);
+
+
+
+        // added to fix redirection issues and logique
+        Location getLocationDirective(std::string path, std::vector<Location> &locations);
 };

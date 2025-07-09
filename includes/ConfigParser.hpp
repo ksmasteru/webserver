@@ -304,6 +304,7 @@ public:
                             throw ;
                         }
                     }
+                    location.setRedFlag(true);
                 }
                 else
                     throw std::runtime_error("Error: Invalid return directive");
