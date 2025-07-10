@@ -146,6 +146,8 @@ void Server::handleReadEvent(int fd)
         removeClient(fd);
         return ;
     }
+    // std::cout << buffer << "\n\n\n";
+    // exit(13);
   /*  else if (readBytes == 0)
     {
         std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;

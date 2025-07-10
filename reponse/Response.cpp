@@ -804,10 +804,14 @@ void Response::makeResponse(int cfd, Request *req, std::map<int, std::string> &e
     this->settings.redirected = false;
     // add to request path / if not provided with the request
     std::string requestPath = req->getRequestPath();
-    if (requestPath[requestPath.size() - 1] != '/')
-        requestPath += '/';
+    // std::cout << requestPath << "\n\n";
+    // exit(12);
+    // check if directory to add / in the end
+    // if (requestPath[requestPath.size() - 1] != '/')
+    //     requestPath += '/';
     // check for redirection
     Location location = getLocationDirective(requestPath, locations);
+    // std::cout << location.getRoot() << "\n,\n";
     // exit(19);
     if (location.getRedFlag() == true)
         this->settings.redirected = true;
