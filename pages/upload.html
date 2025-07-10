@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>File Upload</title>
+</head>
+<body>
+  <h1>Upload a file</h1>
+  <form id="uploadForm" action="http://127.0.0.1:8080/upload" method="POST" enctype="application/octet-stream">
+    <input type="file" id="fileInput" name="file"><br><br>
+    <button type="submit">Upload</button>
+  </form>
+
+  <script>
+    document.getElementById('uploadForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('fileInput');
+      if (!fileInput.files.length) {
+        alert('No file selected!');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      fetch('http://127.0.0.1:8080/upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/octet-stream'
+        },
+        body: file
+      }).then(res => {
+        if (res.ok) alert("Upload success!");
+        else alert("Upload failed.");
+      }).catch(err => alert("Error: " + err));
+    });
+  </script>
+</body>
+</html>

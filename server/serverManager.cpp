@@ -44,6 +44,7 @@ int ServerManager::isServerSocket(int fd)
 }
 
 // determine which server will have to handle the host port request combo.
+// not used !
 int ServerManager::findServerIndex(std::string host, std::string port, std::vector<Server> servers)
 {
     int targetPort = stringToInt(port);

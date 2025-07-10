@@ -7,13 +7,15 @@ RUN apt-get update && apt-get install -y \
     make \
     gcc \
     g++ \
+    nano \
+    curl \
     && apt-get clean
 
 # Set working directory (optional)
 WORKDIR /app
 
 # Copy your code into the container (optional)
-# COPY . .
+COPY . .
 
 # Default command (optional)
 CMD ["/bin/bash"]
