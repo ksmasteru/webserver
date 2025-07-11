@@ -1,6 +1,6 @@
 #include "../includes/Location.hpp"
 
-Location::Location() : _autoindex(false)
+Location::Location() : _autoindex(false), redFlag(false)
 {
 }
 
@@ -28,6 +28,14 @@ void Location::addAllowedMethod(const std::string &method)
 void Location::addRedirection(int code, const std::string &path)
 {
     redirections[code] = path;
+}
+
+void Location::setRedFlag(){
+    redFlag = true;
+}
+
+bool Location::getRedFlag(){
+    return redFlag;
 }
 
 // Getters

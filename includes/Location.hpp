@@ -31,6 +31,7 @@ private:
     std::vector<std::string> _allowedMethods;
     std::map<int, std::string> redirections;
     bool _autoindex;
+    bool redFlag;
     
 
 public:
@@ -45,6 +46,8 @@ public:
     void setAutoindex(bool autoindex);
     void addAllowedMethod(const std::string& method);
     void addRedirection(int code, const std::string& path);
+    void setRedFlag();
+    bool getRedFlag();
     
     // Getters
     std::string& getPath();
