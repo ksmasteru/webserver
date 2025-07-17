@@ -123,6 +123,12 @@ class  Request{ // read event.
     void printHeaderFields();
     void setConnectionType();
     bool isAlive();
+
+    // cookies
+    std::map<std::string, std::string> cookiesMap;
+    void parseCookies(const std::string& cookieHeader);
+
+    
     void reset(){
         std::cout << "reset request ..." << std::endl;
         RawRequest.clear();

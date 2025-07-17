@@ -86,8 +86,7 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Content-Type: " + this->res_data.contentType + " \r\n"
             //<< "Transfer-Encoding: chunked \r\n"
             << "Content-Length: " + longlongToString(cLength) + " \r\n"
-            << "Connection: " + alive + " \r\n"
-            << "\r\n";
+            << "Connection: " + alive + " \r\n";
     }
     else
     {
@@ -96,9 +95,10 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
             << "Transfer-Encoding: chunked \r\n"
-            << "Connection: " + alive + " \r\n"
-            << "\r\n";
+            << "Connection: " + alive + " \r\n";
     }
+    addCookiesHeader(header, this->_request);
+    header << "\r\n";
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
     return (head_msg);
@@ -515,14 +515,17 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
     std::map<int, std::string>::iterator it;
     std::string path;
     it = errorPages.find(403);
-    if (it != errorPages.end())
-    {
-        path = errorPages[403];
-        if ((access(path.c_str(), F_OK) == -1) || (access(path.c_str(), R_OK) == -1))
-            path = "./pages/403.html";
-    }
-    else
-    {
+    // if (it != errorPages.end())
+    // {
+    //     path = errorPages[403];
+    //     if ((access(path.c_str(), F_OK) == -1) || (access(path.c_str(), R_OK) == -1))
+    //         path = "./pages/403.html";
+    // }
+    // else
+    // {
+
+    // fix here add default html pages as code with dynamic body of errorCode if no default page is set by config file.
+    // and are those the only error codes handled?
         switch (errorCode)
         {
             case 403:
@@ -533,7 +536,6 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
                 break;
             default:
                 std::cerr << "Unset error page: " << errorCode << " not handled yet!" << std::endl;
-                exit(1);
         }
         if (access(path.c_str(), R_OK) == -1)
         {
@@ -541,7 +543,7 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
             this->state = ResponseDone;
             throw(cfd);
         }
-    }
+    // }
     sendHeader(path.c_str(), cfd, true);
     int R_BUFF = this->res_data.clength;
     int fd = getFd(path.c_str());
@@ -815,12 +817,35 @@ void Response::handleBadRequest(int cfd, Request *req)
     this->state = ResponseDone;
 }
 
+void Response::addCookiesHeader(std::ostringstream& ofs, Request* req)
+{
+    std::map<std::string, std::string>::iterator it = req->cookiesMap.begin();
+    if (it == req->cookiesMap.end())
+    {
+        // generate random session id
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::string sessionId = std::to_string(now_c) + std::to_string(rand() % 10000);
+        ofs << "Set-Cookie: sessionId=" << sessionId << "; Path=/; HttpOnly\r\n";
+    }
+    else
+    {
+        while (it != req->cookiesMap.end())
+        {
+            ofs << "Set-Cookie: " << it->first << "=" << it->second << "; Path=/; HttpOnly\r\n";
+            ++it;
+        }
+    }
+}
+
 // header of a successful post response.
 void Response::successPostResponse(int cfd)
 {
+    std::map<std::string, std::string>::iterator it = this->_request->cookiesMap.begin();
     std::ostringstream ofs;
-    ofs << "HTTP/1.1 201 Created \r\n"
-        << "Connection: Close \r\n"
+    ofs << "HTTP/1.1 201 Created \r\n";
+    addCookiesHeader(ofs, this->_request);
+    ofs << "Connection: Close \r\n"
         << "\r\n";
     std::string header = ofs.str();
     if (send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL) == -1)
@@ -904,8 +929,9 @@ void Response::sendTimedOutResponse(int cfd)
 {
     std::ostringstream ofs;
 
-    ofs << "HTTP/1.1 408 Request Timeout\r\n"
-        << "Content-Length: 0\r\n"
+    ofs << "HTTP/1.1 408 Request Timeout\r\n";
+    addCookiesHeader(ofs, this->_request);
+    ofs << "Content-Length: 0\r\n"
         << "\r\n";
     
     std::string msg = ofs.str();

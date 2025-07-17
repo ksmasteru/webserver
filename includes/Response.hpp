@@ -117,5 +117,10 @@ class Response : public AResponse
         // code for directory listing
         void DirectoryListing(int, std::string&);
         std::map<std::string, std::string> getDirectoryEntries(std::string&);
+
+        // cookies
+        void addCookiesHeader(std::ostringstream& ofs, Request* req);
+        // void addCookiesHeader(std::ostringstream& ofs, Request req);
+
         
 };
