@@ -335,6 +335,73 @@ void Response::setResponseSettings(Location& _location, int index, bool dirUrl)
     }
     this->settings_set = true;
 }
+
+// std::string Response::getPagePath2(std::string path, std::vector<Location>& locations) {
+//     this->path_set = true;
+//     this->res_data.status = 200;
+    
+//     std::cout << "provided path is " << path << std::endl;
+//     // Input validation
+//     if (path.empty()) {
+//         return "";
+//     }
+    
+//     // Prevent path traversal attacks
+//     if (path.find("..") != std::string::npos) {
+//         this->res_data.status = 403; // Forbidden
+//         return "";
+//     }
+    
+//     std::string folderName = getFolderName(path);
+//     std::string fileName = getFileName(path, folderName);
+    
+//     // Handle non-root paths
+//     if (path != "/") {
+//         for (size_t i = 0; i < locations.size(); i++) {
+//             Location& loc = locations[i];
+            
+//             // Case 1: Directory with trailing slash
+//             if (loc.getPath() != "/" && loc.getPath() + "/" == path) {
+//                 setResponseSettings(loc, i, true);
+//                 if (this->settings.autoIndexed) {
+//                     return loc.getRoot();
+//                 }
+//                 return loc.getIndex();
+//             }
+            
+//             // Case 2: Directory without trailing slash - redirect
+//             else if (loc.getPath() == path && loc.getPath() != "/") {
+//                 setResponseSettings(loc, i, true);
+//                 this->res_data.status = 301;
+//                 this->settings.redirected = true;
+//                 return loc.getPath() + "/";
+//             }
+            
+//             // Case 3: File request within location
+//             else if (loc.getPath() == folderName) {
+//                 setResponseSettings(loc, i, false);
+//                 return loc.getRoot() + fileName;
+//             }
+//         }
+//     }
+    
+//     // Fallback to root location
+//     for (size_t i = 0; i < locations.size(); i++) {
+//         Location& loc = locations[i];
+//         if (loc.getPath() == "/") {
+//             setResponseSettings(loc, i, true);
+//             if (path == "/") {
+//                 return loc.getIndex();
+//             }
+//             return loc.getRoot() + path;
+//         }
+//     }
+    
+//     // No matching location found
+//     this->res_data.status = 404;
+//     return "";
+// }
+
 std::string Response::getPagePath2(std::string path, std::vector<Location>& locations)
 {
     this->path_set = true;
@@ -400,6 +467,7 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
     //std::cout << "fourth condition" << std::endl;
     return ("");
 }
+
 /*
 void Response::notAllowedResponse(int cfd)
 {
@@ -565,28 +633,94 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
     this->state = ResponseDone;
 }
 
-
 void Response::redirectResponse(int cfd, const char *path)
 {
-    //  send a redirect 301 with
     std::cout << "----------redirectResponse called--------" << std::endl;
+    std::cout << "path is :" << path << "\n";
     this->settings.redirected = false;
+    
+    // Validate the redirect path
+    if (!path || strlen(path) == 0)
+    {
+        std::cout << "Invalid redirect path" << std::endl;
+        this->state = ResponseDone;
+        return;
+    }
+    
     std::ostringstream ofs;
-    std::string location = "location: ";
-    ofs << "HTTP/1.1 301 Moved Permanently \r\n"
-        << location + path + " \r\n"
-        << "Connection: close \r\n"
+    
+    // Build the complete redirect URL
+    std::string redirectUrl;
+    if (strncmp(path, "http://", 7) == 0 || strncmp(path, "https://", 8) == 0)
+    {
+        // Already a complete URL
+        redirectUrl = path;
+    }
+    else
+    {
+        // Relative path - construct the full URL
+        // You might need to get the Host header from the request
+        const std::map<std::string, std::string> headers = this->_request->getHeaders();
+        std::string host = headers.at("Host");
+        if (host.empty())
+        {
+            host = "localhost";  // fallback
+        }
+        
+        // Ensure path starts with /
+        if (path[0] != '/')
+        {
+            redirectUrl = "http://" + host + "/" + path;
+        }
+        else
+        {
+            redirectUrl = "http://" + host + path;
+        }
+    }
+    
+    // Build the HTTP response with proper headers
+    ofs << "HTTP/1.1 301 Moved Permanently\r\n"
+        << "Location: " << redirectUrl << "\r\n"
+        << "Content-Length: 0\r\n"
+        << "Connection: close\r\n"
         << "\r\n";
     
     std::string resp = ofs.str();
+    
+    std::cout << "Sending redirect response:\n" << resp << std::endl;
+    
     if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
     {
         std::cout << "Send fail at redirectResponse" << std::endl;
         this->state = ResponseDone;
         throw (cfd);
     }
+    
     this->state = ResponseDone;
 }
+
+// void Response::redirectResponse(int cfd, const char *path)
+// {
+//     //  send a redirect 301 with
+//     std::cout << "----------redirectResponse called--------" << std::endl;
+//     this->settings.redirected = false;
+//     std::ostringstream ofs;
+//     std::string location = "location: ";
+//     ofs << "HTTP/1.1 301 Moved Permanently \r\n"
+//         << location + path + " \r\n"
+//         << "Connection: close \r\n"
+//         << "\r\n";
+    
+//     std::string resp = ofs.str();
+//     if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
+//     {
+//         std::cout << "Send fail at redirectResponse" << std::endl;
+//         this->state = ResponseDone;
+//         throw (cfd);
+//     }
+//     this->state = ResponseDone;
+// }
+
 void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request *req, std::map<int, std::string>& errorPages)
 {
     try
@@ -746,6 +880,54 @@ void Response::sendCgiResponse(int cfd)
     }
 }
 
+Location& Response::findLocationBlock(const std::string& path, std::vector<Location>& locations) {
+    // Input validation
+    if (path.empty()) {
+        throw std::runtime_error("Empty path provided");
+    }
+    
+    // Prevent path traversal attacks
+    if (path.find("..") != std::string::npos) {
+        throw std::runtime_error("Path traversal attack detected");
+    }
+    
+    std::string folderName = getFolderName(path);
+    std::string fileName = getFileName(path, folderName);
+    
+    // Handle non-root paths
+    if (path != "/") {
+        for (size_t i = 0; i < locations.size(); i++) {
+            Location& loc = locations[i];
+            
+            // Case 1: Directory with trailing slash (exact match)
+            if (loc.getPath() != "/" && loc.getPath() + "/" == path) {
+                return loc;
+            }
+            
+            // Case 2: Directory without trailing slash - needs redirect
+            else if (loc.getPath() == path && loc.getPath() != "/") {
+                return loc;
+            }
+            
+            // Case 3: File request within location (prefix match)
+            else if (loc.getPath() == folderName) {
+                return loc;
+            }
+        }
+    }
+    
+    // Fallback to root location
+    for (size_t i = 0; i < locations.size(); i++) {
+        Location& loc = locations[i];
+        if (loc.getPath() == "/") {
+            return loc;
+        }
+    }
+    
+    // No matching location found
+    throw std::runtime_error("No matching location found");
+}
+
 // ?? something missing
 // send repsonse and close cfd for GET!!!.
 // this response if for GET REQUEST ONLLY IF IN CONFIG FILE A PATH ISNT ALLOWED GET RETURNS 405 Method Not Allowed
@@ -756,6 +938,23 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
     //  will add a new response step called pathSet. or just a flag.
     this->_request = req;
     this->settings.redirected = false;
+    Location matchedLocation;
+    try{
+        matchedLocation = findLocationBlock(req->getRequestPath(), locations);
+        if (matchedLocation.getRedFlag())
+            this->settings.redirected = true;
+        // {
+        //     this->res_data.status = 301;
+        //     this->filePath = matchedLocation.getRedirections()[301] + "/";
+        //     return redirectResponse(cfd, this->filePath.c_str());
+        // }
+    }
+    catch(std::exception &e)
+    {
+        std::cout << "Error finding location block: " << e.what() << std::endl;
+        this->res_data.status = 404; // Not Found
+        return handleErrorPage("", cfd);
+    }
     std::cout << "make response called" << std::endl;
     if (!this->path_set)
     {
@@ -764,10 +963,13 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
         this->path_set = true;
         if (this->settings.autoIndexed && this->settings.dirUrl)
             return (DirectoryListing(cfd, this->filePath));
+        if (this->settings.redirected == true)
+        {
+            this->filePath = matchedLocation.getRedirections()[301] + "/";
+            return (redirectResponse(cfd, this->filePath.c_str()));
+        }
         if (!this->settings.GET)
             return (notAllowedGetResponse(cfd));
-        if (this->settings.redirected == true)
-            return (redirectResponse(cfd, this->filePath.c_str()));
         // checking if the path actualy exist and allowed to be accessed.
         if (access(this->filePath.c_str(), F_OK) == 0)
         {

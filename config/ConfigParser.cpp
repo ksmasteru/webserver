@@ -322,6 +322,7 @@ void ConfigParser::parseLocationBlock(std::ifstream &conf, Location &location)
                         throw;
                     }
                 }
+                location.setRedFlag();
             }
             else
                 throw std::runtime_error("Error: Invalid return directive");

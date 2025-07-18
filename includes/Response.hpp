@@ -122,5 +122,7 @@ class Response : public AResponse
         void addCookiesHeader(std::ostringstream& ofs, Request* req);
         // void addCookiesHeader(std::ostringstream& ofs, Request req);
 
+        Location& findLocationBlock(const std::string& path, std::vector<Location>& locations);
+
         
 };
