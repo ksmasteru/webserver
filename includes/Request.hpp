@@ -150,4 +150,8 @@ class  Request{ // read event.
     bool    isValidPostPath(std::vector<Location> _locations);
     std::string getfullpath();
     const std::map<std::string, std::string>& getHeaders() const;
+
+    // cookies
+    std::map<std::string, std::string> cookiesMap;
+    void parseCookies(const std::string& cookieHeader);
 };

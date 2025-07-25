@@ -74,6 +74,27 @@ std::string Response::getTime()
     
 }
 
+void Response::addCookiesHeader(std::ostringstream& ofs, Request* req)
+{
+    std::map<std::string, std::string>::iterator it = req->cookiesMap.begin();
+    if (it == req->cookiesMap.end())
+    {
+        // generate random session id
+        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
+        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+        std::string sessionId = std::to_string(now_c) + std::to_string(rand() % 10000);
+        ofs << "Set-Cookie: sessionId=" << sessionId << "; Path=/; HttpOnly\r\n";
+    }
+    else
+    {
+        while (it != req->cookiesMap.end())
+        {
+            ofs << "Set-Cookie: " << it->first << "=" << it->second << "; Path=/; HttpOnly\r\n";
+            ++it;
+        }
+    }
+}
+
 std::string Response::RspHeader(long long cLength, unsigned int code)
 {
     std::string alive = "keep-alive"; // will be set later;
@@ -86,8 +107,7 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Content-Type: " + this->res_data.contentType + " \r\n"
             //<< "Transfer-Encoding: chunked \r\n"
             << "Content-Length: " + longlongToString(cLength) + " \r\n"
-            << "Connection: " + alive + " \r\n"
-            << "\r\n";
+            << "Connection: " + alive + " \r\n";
     }
     else
     {
@@ -96,9 +116,10 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Server: apache/2.4.41 (Ubuntu) \r\n"
             << "Content-Type: " + this->res_data.contentType + " \r\n"
             << "Transfer-Encoding: chunked \r\n"
-            << "Connection: " + alive + " \r\n"
-            << "\r\n";
+            << "Connection: " + alive + " \r\n";
     }
+    addCookiesHeader(header, this->_request);
+    header << "\r\n";
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
     return (head_msg);
@@ -658,8 +679,6 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
 
         if (error_msg.find("timeout") != std::string::npos)
         {
-            std::cout << "wazbi timout l7wa " << std::endl;
-
             // Prepare the 504 Gateway Timeout response
             std::string body =
                 "<html>\r\n"
@@ -670,15 +689,16 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
                 "</body>\r\n"
                 "</html>\r\n";
 
-            std::string response =
+            std::ostringstream header;
+            header << 
                 "HTTP/1.1 504 Gateway Timeout\r\n"
-                "Content-Type: text/html\r\n"
-                "Content-Length: " +
-                std::to_string(body.length()) + "\r\n"
-                                                "Connection: close\r\n"
-                                                "\r\n" +
-                body;
-
+                << "Content-Type: text/html\r\n"
+                << "Content-Length: "
+                << std::to_string(body.length()) + "\r\n"
+                                                << "Connection: close\r\n";
+                addCookiesHeader(header, this->_request);
+            header << "\r\n";
+            std::string response = header.str() + body;
             // Send the response to the client
             send(cfd, response.c_str(), response.length(), 0);
             close(cfd);
@@ -852,8 +872,9 @@ void Response::handleBadRequest(int cfd, Request *req)
 void Response::successPostResponse(int cfd)
 {
     std::ostringstream ofs;
-    ofs << "HTTP/1.1 201 Created \r\n"
-        << "Connection: Close \r\n"
+    ofs << "HTTP/1.1 201 Created \r\n";
+    addCookiesHeader(ofs, this->_request);
+    ofs << "Connection: Close \r\n"
         << "\r\n";
     std::string header = ofs.str();
     if (send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL) == -1)
@@ -937,8 +958,9 @@ void Response::sendTimedOutResponse(int cfd)
 {
     std::ostringstream ofs;
 
-    ofs << "HTTP/1.1 408 Request Timeout\r\n"
-        << "Content-Length: 0\r\n"
+    ofs << "HTTP/1.1 408 Request Timeout\r\n";
+    addCookiesHeader(ofs, this->_request);
+    ofs << "Content-Length: 0\r\n"
         << "\r\n";
     
     std::string msg = ofs.str();
@@ -1086,7 +1108,8 @@ std::string Response::buildCgiResponse()
         response_stream << "Connection: keep-alive\r\n";
     } else {
         response_stream << "Connection: close\r\n";
-    }    
+    }
+    addCookiesHeader(response_stream, this->_request);
     response_stream << "\r\n"; 
     response_stream << cgi_body;
     return response_stream.str();

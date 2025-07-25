@@ -45,6 +45,37 @@ void Request::setConnectionType()
     }
 }
 
+void Request::parseCookies(const std::string& cookieHeader)
+{
+    size_t pos = 0;
+    size_t endPos = 0;
+    while ((endPos = cookieHeader.find(';', pos)) != std::string::npos)
+    {
+        std::string cookie = cookieHeader.substr(pos, endPos - pos);
+        size_t equalPos = cookie.find('=');
+        if (equalPos != std::string::npos)
+        {
+            std::string key = cookie.substr(0, equalPos);
+            std::string value = cookie.substr(equalPos + 1);
+            cookiesMap[key] = value;
+        }
+        pos = endPos + 1;
+    }
+
+    // Handle the last cookie if there's no trailing semicolon
+    if (pos < cookieHeader.length())
+    {
+        std::string cookie = cookieHeader.substr(pos);
+        size_t equalPos = cookie.find('=');
+        if (equalPos != std::string::npos)
+        {
+            std::string key = cookie.substr(0, equalPos);
+            std::string value = cookie.substr(equalPos + 1);
+            cookiesMap[key] = value;
+        }
+    }
+}
+
 /*if request type != get and there is still data after parssing 
 header throw bad request.*/
 
