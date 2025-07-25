@@ -54,7 +54,7 @@ std::string Response::RspStatusline(unsigned int code)
             Response = "Moved Permanently";
             break;
         default:
-            Response = "Not allowed"; 
+            Response = "Not allowed";
             break;
     }
     /*std::map<std::string, std::string>::iterator it;
@@ -655,7 +655,7 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
         std::cout << "CGI execution error: " << e.what() << std::endl;
 
         std::string error_msg = e.what();
-    
+
         if (error_msg.find("timeout") != std::string::npos)
         {
             std::cout << "wazbi timout l7wa " << std::endl;
