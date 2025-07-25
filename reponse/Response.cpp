@@ -335,6 +335,8 @@ void Response::setResponseSettings(Location& _location, int index, bool dirUrl)
     }
     this->settings_set = true;
 }
+
+// new handling if locations[i] is a redirect block.
 std::string Response::getPagePath2(std::string path, std::vector<Location>& locations)
 {
     this->path_set = true;
@@ -344,6 +346,7 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
     std::cout << "folderName is : " << folderName << std::endl;
     std::string fileName = getFileName(path, folderName);
     std::cout << "filename is : " << fileName << std::endl;
+    std::map<int, std::string>::iterator it;
     if (path != "/")
     {
         for (size_t i = 0; i < locations.size(); i++)
@@ -351,32 +354,60 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             std::cout << "location[i] path is : " << locations[i].getPath() << std::endl;
             if (locations[i].getPath() != "/" && locations[i].getPath() + "/" == path)
             {
+                // new check if is a redirection.
+                if (locations[i].redirectBlock)
+                {
+                    std::cout << "---- redirect block detected in first condition ----" << std::endl; 
+                    it = locations[i].redirections.begin();
+                    std::cout << "--- redirecting to " << (it)->second << std::endl;
+                    this->settings.redirected = true;
+                    //exit(1);
+                    return (it->second);
+                }
                 std::cout << "First condition" << std::endl;
                 std::cout << "to return " << locations[i].getIndex() << std::endl;
                 setResponseSettings(locations[i], i, true);
                 if (this->settings.autoIndexed)
                 {
                     std::cout << "auto index detected ..." << std::endl;
-                    std::cout << "todo directory listing " << locations[i].getRoot() << std::endl;
+                    //std::cout << "todo directory listing " << locations[i].getRoot() << std::endl;
+                    //exit(1);
                     return (locations[i].getRoot());
                 }
                 return(locations[i].getIndex());
             }
-            else if (locations[i].getPath() == path && locations[i].getPath() != "/")
+            else if (locations[i].getPath() == path && locations[i].getPath() != "/") /* no folder name*/
             {
-                std::cout << "Second condition : redirection" << std::endl;
+                if (locations[i].redirectBlock)
+                {
+                    std::cout << "--- redirect block detected ---" << std::endl;
+                    it = locations[i].redirections.begin();
+                    std::cout << "--- redirecting to " << it->second << std::endl; // wrong.
+                    //std::cout << "--- redirecting to " << (it)->second << std::endl; // wrong.
+                    //exit(1);
+                    this->settings.redirected = true;
+                    return (it->second);
+                }
                 std::cout << "to return : " << locations[i].getPath() + "/" << std::endl;
-                //exit(1);
+                std::cout << "Second condition : redirection" << std::endl;
                 setResponseSettings(locations[i], i, true);
                 this->res_data.status = 301;
                 this->settings.redirected = true;
                 return (locations[i].getPath() + "/"); // images/
             }
-            else if (locations[i].getPath() == folderName)
+            else if (locations[i].getPath() == folderName) // images/ronaldo.jpg.
             {
-                std::cout << "third condition" << std::endl;
+                if (locations[i].redirectBlock)
+                {
+                    std::cout << "--- redirect block detected ---" << std::endl;
+                    it = locations[i].redirections.begin();
+                    std::cout << "to return : " << (it)->second + fileName << std::endl;
+                    //exit (1);
+                    this->settings.redirected = true;
+                    return (it->second + fileName);
+                }
                 std::cout << "to return : " << locations[i].getRoot() + fileName << std::endl;
-                //exit(1);
+                std::cout << "third condition" << std::endl;
                 setResponseSettings(locations[i], i, false);
                 return (locations[i].getRoot() + fileName);
             }
@@ -435,11 +466,13 @@ void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
     if (this->settings.DELETE)
         allowedMethods += "DELETE";
     std::ostringstream msg;
-    /*HTTP/1.1 405 Method Not Allowed
+    /*
+    HTTP/1.1 405 Method Not Allowed
     Content-Length: 0
     Date: Fri, 28 Jun 2024 14:30:31 GMT
     Server: ECLF (nyd/D179)
-    Allow: GET, POST, HEAD*/
+    Allow: GET, POST, HEAD
+    */
     msg << "HTTP/1.1 405 Method Not Allowed \r\n"
         << "Date: " + getTime() + " \r\n"
         << "Server: apache/2.4.41 (mac osx) \r\n"
@@ -575,7 +608,7 @@ void Response::redirectResponse(int cfd, const char *path)
         << location + path + " \r\n"
         << "Connection: close \r\n"
         << "\r\n";
-    
+
     std::string resp = ofs.str();
     if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
     {
@@ -622,7 +655,7 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
         std::cout << "CGI execution error: " << e.what() << std::endl;
 
         std::string error_msg = e.what();
-
+    
         if (error_msg.find("timeout") != std::string::npos)
         {
             std::cout << "wazbi timout l7wa " << std::endl;
@@ -760,12 +793,12 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
         this->filePath = getPagePath2(req->getRequestPath(), locations);
         std::cout << "file path is: " << this->filePath << std::endl;
         this->path_set = true;
+        if (this->settings.redirected == true)
+            return (redirectResponse(cfd, this->filePath.c_str()));
         if (this->settings.autoIndexed && this->settings.dirUrl)
             return (DirectoryListing(cfd, this->filePath));
         if (!this->settings.GET)
             return (notAllowedGetResponse(cfd));
-        if (this->settings.redirected == true)
-            return (redirectResponse(cfd, this->filePath.c_str()));
         // checking if the path actualy exist and allowed to be accessed.
         if (access(this->filePath.c_str(), F_OK) == 0)
         {

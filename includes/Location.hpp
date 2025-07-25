@@ -29,11 +29,12 @@ private:
     std::string _cgiExtension;
     std::string _cgiPath;
     std::vector<std::string> _allowedMethods;
-    std::map<int, std::string> redirections;
     bool _autoindex;
 
 public:
-    Location() : _autoindex(false) {}
+    bool redirectBlock;
+    std::map<int, std::string> redirections;
+    Location() : _autoindex(false), redirectBlock(false) {}
     
     void setPath(const std::string& path) { _path = path; }
     void setRoot(const std::string& root) { _root = root; }
@@ -45,7 +46,11 @@ public:
     void addAllowedMethod(const std::string& method) {
         _allowedMethods.push_back(method);
     }
+    
     void addRedirection(int code, const std::string& path) {
+        std::cout << "redirection key : " << code << std::endl;
+        std::cout << "redirection value : " << path << std::endl;
+        redirectBlock = true;
         redirections[code] = path;
     }
     
