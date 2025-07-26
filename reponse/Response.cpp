@@ -401,7 +401,7 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             {
                 if (locations[i].redirectBlock)
                 {
-                    std::cout << "--- redirect block detected ---" << std::endl;
+                    std::cout << "--- redirect block detected in second condition---" << std::endl;
                     it = locations[i].redirections.begin();
                     std::cout << "--- redirecting to " << it->second << std::endl; // wrong.
                     //std::cout << "--- redirecting to " << (it)->second << std::endl; // wrong.
@@ -422,9 +422,13 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
                 {
                     std::cout << "--- redirect block detected ---" << std::endl;
                     it = locations[i].redirections.begin();
-                    std::cout << "to return : " << (it)->second + fileName << std::endl;
-                    //exit (1);
+                    if (it->second == "/")
+                        std::cout << "to return : " << fileName << std::endl;
+                    else
+                        std::cout << "to return : " << it->second + fileName << std::endl;
                     this->settings.redirected = true;
+                    if (it->second ==  "/")
+                        return (fileName);
                     return (it->second + fileName);
                 }
                 std::cout << "to return : " << locations[i].getRoot() + fileName << std::endl;
