@@ -299,6 +299,8 @@ public:
                             int error_code = std::stoi(code_str);
                             if (error_code != 301)
                                 throw std::runtime_error("Error: Invalid HTTP status code in return directive");
+                            if (path == "/")
+                                throw std::runtime_error("Error: Forbidden Redirection to path '/'");
                             location.addRedirection(error_code, path);
                         } catch (...) {
                             throw ;
