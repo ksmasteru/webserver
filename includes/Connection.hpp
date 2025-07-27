@@ -1,10 +1,8 @@
 #pragma once
 
-
 #include "Response.hpp"
 #include "Request.hpp"
-#include "server.hpp"
- 
+#include <sys/time.h>
 // std::map <int, Connection*> map;
 // each client has a connection.
 

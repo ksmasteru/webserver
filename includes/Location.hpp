@@ -19,7 +19,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <sstream>
-
+    
 class Location {
 private:
     std::string _path;

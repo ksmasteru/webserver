@@ -1,3 +1,4 @@
+// fall through issues.
 #include "../includes/Request.hpp"
 #include <map>
 #include <string>
@@ -505,13 +506,13 @@ bool Request::isValidPostPath(std::vector<Location> _locations)
 {
     std::string req_path = getRequestPath();
     std::cout << "post request path is " << req_path << std::endl;
-    for (int i = 0; i < _locations.size(); i++)
+    for (size_t i = 0; i < _locations.size(); i++)
     {
         if (req_path == _locations[i].getPath())
         {
             std::cout << "req_path is : " << req_path << std::endl;
             std::vector<std::string> allowed = _locations[i].getAllowedMethods();
-            for (int i = 0; i < allowed.size(); i++)
+            for (size_t i = 0; i < allowed.size(); i++)
             {
                 if (allowed[i] == "POST")
                 {

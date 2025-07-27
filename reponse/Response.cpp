@@ -1,3 +1,4 @@
+// flags done
 #include "../includes/Response.hpp"
 #include "../includes/cgiHandler.hpp"
 #include <fstream>
@@ -554,15 +555,6 @@ void Response::notFoundResponsePage(std::map<int, std::string>& errorPages)
     close(fd);
     this->state = ResponseDone;
 }*/
-
-// in location "provided by config file" if path is exact match of location's path
-// return location index attribute (if set) : in  this example it is always set
-// example : path = /pages ; returns index.html.
-bool Response::handlePathRedirection(std::string path, std::vector<Location>& locations)
-{
-    int location_index = this->settings.Locationindex;
-    return true;
-}
 
 void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages, int errorCode)
 {
@@ -1230,11 +1222,12 @@ void Response::DirectoryListing(int cfd, std::string& dir)
         << "<a href=\"../\">../</a>\n";
     std::map<std::string, std::string>::iterator it;
     for (it = entries_info.begin(); it != entries_info.end(); ++it)
+    {
         body << "<a href=\"" << it->first << "\">" << it->first << "</a>" << std::setw(20) << it->second << "\n";
-        body << "</pre><hr>\n"
-             << "</body>\n"
-             << "</html>\n";
-
+    }
+    body << "</pre><hr>\n"
+        << "</body>\n"
+        << "</html>\n";
     std::string body_str = body.str();
     this->res_data.contentType = "text/html";
     chunked = false;

@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/epoll.h>
+#include "server.hpp"
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <vector>
@@ -22,20 +23,12 @@
 #include <sys/time.h>
 
 
-typedef struct InetData{
-    struct sockaddr_in server_fd, client_addr;
-    socklen_t client_len;
-    struct epoll_event event, events[MAX_EVENTS];
-    int epollfd, clientfd;
-    int sfd;
-}t_InetData;
-
 #include "ServerManager.hpp"
 #include "Location.hpp"
 #include "ConfigParser.hpp"
 #include "Iconnect.hpp"
 
-// bewlo is timeout TIMES IN SEC.
+// below is timeout TIMES IN SEC.
 #define HEADER_TIMEOUT 5
 #define BODY_TIMEOUT 30
 #define CONNECTION_TIMEOUT 3600

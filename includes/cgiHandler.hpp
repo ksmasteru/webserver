@@ -21,12 +21,12 @@ class Cgi
 private:
     char **envp;
     int pid;
-    int fds[2];  
+    int fds[2];
     Request *req;
     AResponse *res;
     static const int DEFAULT_CGI_TIMEOUT = 5;
-    int timeout;
     std::string scriptPath;
+    int timeout;
     std::string interpreter;
 
     static void handle_timeout(int signum);

@@ -443,7 +443,6 @@ bool Server::clientExist(int cfd)
 
 int Server::run()
 {
-    int client_fd;
     while (true)
     {
         // unbind Timedout now set a flag : handlewrite event is to be responsible to detaching
@@ -540,10 +539,12 @@ void Server::print() const
     std::cout << "Server:" << std::endl;
     for (auto &host : _hosts)
         std::cout << "  Host: " << host << std::endl;
-    for (int i = 0; i < _ports.size(); i++)
+    for (size_t i = 0; i < _ports.size(); i++)
         std::cout << "  Port: " << _ports[i] << std::endl;
     for (const auto &name : _serverNames)
+    {
         std::cout << "  Server Name: " << name << std::endl;
+    }
         std::cout << "  Max Body Size: " << _clientMaxBodySize << std::endl;
     if (!_errorPages.empty())
     {
@@ -565,7 +566,7 @@ void Server::print() const
 
 void Server::removePort(std::string port)
 {
-    for (int i = 0; i < _ports.size(); i++)
+    for (size_t i = 0; i < _ports.size(); i++)
     {
         if (_ports[i] == stringToInt(port))
             _ports.erase(_ports.begin() + i);
@@ -574,7 +575,7 @@ void Server::removePort(std::string port)
 
 void Server::removeHost(std::string host)
 {
-    for (int i = 0; i < _hosts.size(); i++)
+    for (size_t i = 0; i < _hosts.size(); i++)
     {
         if (_hosts[i] == host)
             _hosts.erase(_hosts.begin() + i);
@@ -586,7 +587,6 @@ bool isValidConfigFile(int ac, char **av)
     if (ac != 2)
         return (false);
     std::string filename = av[1];
-    // blabla.cof jude.
     std::cout << "filename ist " << filename << std::endl;
     size_t dot = filename.rfind('.');
     if (dot == std::string::npos)

@@ -26,9 +26,9 @@ bool ServerManager::isServerSocket(int fd)
 // returns -1 on failure
 int ServerManager::isServerSocket(int fd)
 {
-    for (int i = 0; i < servers.size(); i++)
+    for (size_t i = 0; i < servers.size(); i++)
     {
-        for (int j = 0; j < servers[i].serverSockets.size(); j++)
+        for (size_t j = 0; j < servers[i].serverSockets.size(); j++)
         {
             if (servers[i].serverSockets[j] == fd)
                 return i;

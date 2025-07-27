@@ -84,7 +84,7 @@ class Response : public AResponse
         void notAllowedGetResponse(int);
         void accessDeniedResponsePage(std::map<int, std::string>&);
         void notFoundResponsePage(std::map<int, std::string>&);
-        bool handlePathRedirection(std::string, std::vector<Location>&);
+        //bool handlePathRedirection(std::string, std::vector<Location>&);
         std::string getPagePath2(std::string , std::vector<Location>&);
         std::string getPath();
         void errorResponsePage(int, std::map<int, std::string>&, int );

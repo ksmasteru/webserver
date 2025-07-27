@@ -1,3 +1,4 @@
+// flags done
 #include "../includes/cgiHandler.hpp"
 
 Cgi::Cgi()
@@ -7,7 +8,7 @@ Cgi::Cgi()
 }
 
 Cgi::Cgi(Request *req, AResponse *res, const std::string& script_path, int timeout)
-    : req(req), res(res), scriptPath(script_path), envp(NULL), pid(0), timeout(timeout)
+    : envp(NULL), pid(0), req(req), res(res), scriptPath(script_path), timeout(timeout)
 {
     fds[0] = fds[1] = -1;
     determine_interpreter();
@@ -38,7 +39,7 @@ void Cgi::handle_timeout(int)
 
 void Cgi::load_into_envp()
 {
-        std::cout << "content type this is  " << this->res->getResData().contentType << std::endl;
+    std::cout << "content type this is  " << this->res->getResData().contentType << std::endl;
 
     std::vector<std::string> envs;
     envs.push_back("REQUEST_METHOD=" + req->getType());

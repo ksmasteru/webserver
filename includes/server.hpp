@@ -5,12 +5,18 @@
 #pragma once
 
 #include "webserver.hpp"
-#include "Request.hpp"
-#include "AResponse.hpp"
-#include "Response.hpp"
 #include "Connection.hpp"
 #include "Location.hpp"
 #include "Iconnect.hpp"
+
+typedef struct InetData{
+    struct sockaddr_in server_fd, client_addr;
+    socklen_t client_len;
+    struct epoll_event event, events[MAX_EVENTS];
+    int epollfd, clientfd;
+    int sfd;
+}t_InetData;
+
 class Connection;
 class Server{
     private:

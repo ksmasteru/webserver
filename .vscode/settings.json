@@ -87,6 +87,7 @@
         "__nullptr": "cpp",
         "print": "cpp",
         "__string": "cpp",
-        "forward_list": "cpp"
+        "forward_list": "cpp",
+        "filesystem": "cpp"
     }
 }

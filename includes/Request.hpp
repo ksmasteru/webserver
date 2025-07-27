@@ -1,7 +1,6 @@
 #pragma once
 #include <string>
 #include <map>
-#pragma once
 #include <iostream>
 #include <fcntl.h>
 #include "../includes/utils.hpp"
@@ -14,7 +13,7 @@ enum Chunk_State{
     LF1,
     chunk_data,
     CR2,
-    write_chunk, // next time you write credit.
+    //write_chunk, // next time you write credit.
     CR3,
     LF3,
     chunk_done
