@@ -1,6 +1,6 @@
 NAME = apache
 CC := c++
-CFLAGS := -Wall -Wextra -Werror -std=c++98 -pedantic
+CFLAGS := 
 
 SRCS = utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
 reponse/Response.cpp server/serverManager.cpp utils/trim.cpp reponse/cgiHandler.cpp \
@@ -15,10 +15,10 @@ OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) -fsanitize=address $(OBJS) -o $(NAME)
+	$(CC)  $(OBJS) -o $(NAME)
 
 %.o: %.cpp
-	$(CC) -c -g3 -std=c++11 -fsanitize=address $< -o $@
+	$(CC) -c $< -o $@
 
 clean:
 	rm -f $(OBJS)

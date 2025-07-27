@@ -1,4 +1,4 @@
-// fall through issues.
+// fall through issues. :fixed it this cause any issue return to pre 27/07 version.
 #include "../includes/Request.hpp"
 #include <map>
 #include <string>
@@ -170,12 +170,16 @@ void Request::parseRequestHeader(char* request, int readBytes, std::vector<Locat
                 this->SubState = val;
                 if (isspace(c))
                     break;
+                else{offset--;
+                    break;}
             case val:
                 if (c == '\r')
                 {
                     if (fieldvalue.empty())
                         throw("emptyvalue\n");
                     this->SubState = CR;
+                    offset--;
+                    break;
                 }
                 else
                 {
@@ -196,6 +200,7 @@ void Request::parseRequestHeader(char* request, int readBytes, std::vector<Locat
                 {
                     throw ("bad CR case\n");
                 }
+                break;
             case LF:/*code changed here*/
                 if (c != '\n')
                     throw ("no new line\n");
@@ -605,6 +610,8 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
             case LF1:
                 start = offset;
                 this->RequestFile.state = chunk_data;
+                offset--;
+                break;
             case chunk_data:
                 if (this->RequestFile.toWrite != 0)
                 {

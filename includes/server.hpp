@@ -55,7 +55,7 @@ class Server{
         const std::vector<Location> &getLocations() const;
         void removePort(std::string port);
         void removeHost(std::string host);
-        void print(); 
+        void print() const; 
         void addNewClient(int, int);
         // end of new code.
     

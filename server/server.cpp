@@ -534,7 +534,7 @@ std::vector<std::string> &Server::getServerNames() { return _serverNames; }
 size_t Server::getClientMaxBodySize() const { return _clientMaxBodySize; }
 const std::map<int, std::string> &Server::getErrorPages() const { return _errorPages; }
 const std::vector<Location> &Server::getLocations() const { return _locations; }
-void Server::print()
+void Server::print() const
 {
     std::cout << "Server:" << std::endl;
     for (size_t i = 0; i < _hosts.size(); i++)
@@ -547,9 +547,9 @@ void Server::print()
     if (!_errorPages.empty())
     {
         std::cout << "  Error Pages:" << std::endl;
-        std::map<int, std::string>::iterator it;
+        /*std::map<int, std::string>::iterator it;
         for (it = _errorPages.begin(); it != _errorPages.end(); ++it)
-            std::cout << "    " << it->first << " -> " << it->second << std::endl;
+            std::cout << "    " << it->first << " -> " << it->second << std::endl;*/
     }
     if (!_locations.empty())
     {
