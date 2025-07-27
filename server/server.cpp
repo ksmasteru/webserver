@@ -617,10 +617,15 @@ int main(int ac, char **av)
         configParser.parse(confFile);
         configParser.printConfig();
     }
-    catch (const char *msg)
+    catch (std::exception& e)
     {
-        std::cout << msg << std::endl;
+        std::cout << e.what() << std::endl;
+        return 1;
     }
+    // catch (const char *msg)
+    // {
+    //     std::cout << msg << std::endl;
+    // }
     try 
     {
         ServerManager servManager(configParser.getServers());
@@ -638,9 +643,5 @@ int main(int ac, char **av)
     catch(const char *msg)
     {
         std::cerr << msg << std::endl;
-    }
-    catch (std::exception& e)
-    {
-        std::cout << e.what() << std::endl;
     }
 }
