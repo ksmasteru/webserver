@@ -20,8 +20,6 @@ Response::Response()
 Response::Response(const std::string& type, Request* req, std::map<std::string, 
 std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 {
-    // first checks if the file exist based on this info : fill body header
-    // shalow copy of request.
     fileOffset = 0;
     sentBytes = 0;
     openfile = false;
@@ -33,7 +31,6 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
 }
 
 // response header should be lsat to get filled.
-
 std::string Response::RspStatusline(unsigned int code)
 { 
     std::string statusCode = intToString(code);
@@ -1231,9 +1228,6 @@ void Response::DirectoryListing(int cfd, std::string& dir)
         << "<body>\n"
         << "<h1>Index of " << dir << "</h1><hr><pre>\n"
         << "<a href=\"../\">../</a>\n";
-
-// <a href="feather.jpg">feather.jpg</a>   03-Jun-2025 21:53   46K
-
     std::map<std::string, std::string>::iterator it;
     for (it = entries_info.begin(); it != entries_info.end(); ++it)
         body << "<a href=\"" << it->first << "\">" << it->first << "</a>" << std::setw(20) << it->second << "\n";

@@ -4,6 +4,7 @@ CFLAGS := -Wall -Wextra -Werror -std=c++98 -pedantic
 
 SRCS := utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
 reponse/Response.cpp server/serverManager.cpp utils/trim.cpp reponse/cgiHandler.cpp \
+reponse/Aresponse.cpp
 
 HEADERS := includes/webserver.hpp includes/AResponse.hpp includes/Iconnect.hpp includes/Response.hpp \
 includes/server.hpp includes/utils.hpp includes/webserver.hpp includes/Location.hpp \
