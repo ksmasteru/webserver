@@ -59,7 +59,7 @@ void Server::addNewClient()
     set_nonblocking(client_fd);
     // create a connection object and att it to <fd, connection>map;
     struct timeval startTime;
-    gettimeofday(&startTime, nullptr);
+    gettimeofday(&startTime, 0);
     Connection* new_client = new Connection(client_fd, startTime);
     // makes no sense.
     this->clients[client_fd] = new_client;
@@ -91,7 +91,7 @@ void Server::addNewClient(int epoll_fd, int socket_fd)
     set_nonblocking(client_fd);
     // create a connection object and att it to <fd, connection>map;
     struct timeval startTime;
-    gettimeofday(&startTime, nullptr);
+    gettimeofday(&startTime, 0);
     Connection* new_client = new Connection(client_fd, startTime);
     // makes no sense.
     this->clients[client_fd] = new_client;  
@@ -368,7 +368,7 @@ void Server::unBindTimedOutClients()
     // TOTAL connection; 5min;
     std::map <int, Connection*>::iterator it;
     struct timeval curTime;
-    gettimeofday(&curTime, nullptr);
+    gettimeofday(&curTime, 0);
     //std::cout << "unbind timeout clients launched..." << std::endl;
     for (it = clients.begin(); it != clients.end(); ++it)
     {
@@ -534,33 +534,28 @@ std::vector<std::string> &Server::getServerNames() { return _serverNames; }
 size_t Server::getClientMaxBodySize() const { return _clientMaxBodySize; }
 const std::map<int, std::string> &Server::getErrorPages() const { return _errorPages; }
 const std::vector<Location> &Server::getLocations() const { return _locations; }
-void Server::print() const
+void Server::print()
 {
     std::cout << "Server:" << std::endl;
-    for (auto &host : _hosts)
-        std::cout << "  Host: " << host << std::endl;
+    for (size_t i = 0; i < _hosts.size(); i++)
+        std::cout << " Host: " << _hosts[i] << std::endl;
     for (size_t i = 0; i < _ports.size(); i++)
         std::cout << "  Port: " << _ports[i] << std::endl;
-    for (const auto &name : _serverNames)
-    {
-        std::cout << "  Server Name: " << name << std::endl;
-    }
-        std::cout << "  Max Body Size: " << _clientMaxBodySize << std::endl;
+    for (size_t i = 0; i < _serverNames.size(); i++)
+        std::cout << "  ServerName : " << _serverNames[i] << std::endl;
+    std::cout << "  Max Body Size: " << _clientMaxBodySize << std::endl;
     if (!_errorPages.empty())
     {
         std::cout << "  Error Pages:" << std::endl;
-        for (const auto &page : _errorPages)
-        {
-            std::cout << "    " << page.first << " -> " << page.second << std::endl;
-        }
+        std::map<int, std::string>::iterator it;
+        for (it = _errorPages.begin(); it != _errorPages.end(); ++it)
+            std::cout << "    " << it->first << " -> " << it->second << std::endl;
     }
     if (!_locations.empty())
     {
         std::cout << "  Locations:" << std::endl;
-        for (const auto &loc : _locations)
-        {
-            loc.print();
-        }
+        for (size_t i = 0; i < _locations.size(); i++)
+            _locations[i].print();
     }
 }
 

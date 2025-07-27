@@ -90,7 +90,8 @@ void Cgi::load_into_envp()
     std::ostringstream contentTypeStream;
     envs.push_back("CONTENT_TYPE=" + contentTypeStream.str());
     
-    for (const auto& [k, v] : req->getHeaders()) {
+    for (const auto& [k, v] : req->getHeaders())
+    {
         std::string key = k;
         for (size_t i = 0; i < key.size(); ++i) {
             key[i] = (key[i] == '-') ? '_' : std::toupper(key[i]);

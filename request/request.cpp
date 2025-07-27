@@ -103,12 +103,12 @@ void Request::printRequestLine()
     std::cout << "method type " << this->getType() << std::endl; 
     std::cout << "Request Uri " << this->targetUri << std::endl;     
 }
-
+/*
 void Request::printHeaderFields()
 {
     for (auto it = headers.begin(); it != headers.end(); ++it)
         std::cout << it->first << ": " << it->second << std::endl;
-}
+}*/
 bool unvalidheaderVal(std::string& val)
 {
     size_t i = val.length() - 1;

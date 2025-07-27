@@ -2,35 +2,33 @@
 
 AResponse::AResponse(std::string type, Request* req, std::map<std::string, std::string>* status, int client_fd) :_type(type), _request(req), resp_msg(NULL), statuscodes(status)
     , _client_fd(client_fd){
-        std::cout << "AResponse constructor called" << std::endl;
-        this->statuscodes = new std::map<std::string, std::string>({
-                {"200", "OK"},
-                {"404", "Not Found"},
-                {"500", "Internal Server Error"},
-    });
+    std::cout << "AResponse constructor called" << std::endl;
+    this->statuscodes = new std::map<std::string, std::string>();
+    this->statuscodes->insert(std::make_pair("200", "OK"));
+    this->statuscodes->insert(std::make_pair("404", "Not Found"));
+    this->statuscodes->insert(std::make_pair("500", "Internal Server Error"));
 }
 
 AResponse::AResponse(): status_code(200), is_cgi_response(false){
-    this->statuscodes = new std::map<std::string, std::string>({
-        {"200", "OK"},
-        {"201", "Created"},
-        {"204", "No Content"},
-        {"301", "Moved Permanently"},
-        {"302", "Found"},
-        {"304", "Not Modified"},
-        {"400", "Bad Request"},
-            {"401", "Unauthorized"},
-            {"403", "Forbidden"},
-            {"404", "Not Found"},
-            {"405", "Method Not Allowed"},
-            {"413", "Payload Too Large"},
-            {"414", "URI Too Long"},
-            {"500", "Internal Server Error"},
-            {"501", "Not Implemented"},
-            {"502", "Bad Gateway"},
-            {"503", "Service Unavailable"},
-            {"504", "Gateway Timeout"}
-        });
+    this->statuscodes = new std::map<std::string, std::string>();
+    this->statuscodes->insert(std::make_pair("200", "OK"));
+    this->statuscodes->insert(std::make_pair("201", "Created"));
+    this->statuscodes->insert(std::make_pair("204", "No Content"));
+    this->statuscodes->insert(std::make_pair("301", "Moved Permanently"));
+    this->statuscodes->insert(std::make_pair("302", "Found"));
+    this->statuscodes->insert(std::make_pair("304", "Not Modified"));
+    this->statuscodes->insert(std::make_pair("400", "Bad Request"));
+    this->statuscodes->insert(std::make_pair("401", "Unauthorized"));
+    this->statuscodes->insert(std::make_pair("403", "Forbidden"));
+    this->statuscodes->insert(std::make_pair("404", "Not Found"));
+    this->statuscodes->insert(std::make_pair("405", "Method Not Allowed"));
+    this->statuscodes->insert(std::make_pair("413", "Payload Too Large"));
+    this->statuscodes->insert(std::make_pair("414", "URI Too Long"));
+    this->statuscodes->insert(std::make_pair("500", "Internal Server Error"));
+    this->statuscodes->insert(std::make_pair("501", "Not Implemented"));
+    this->statuscodes->insert(std::make_pair("502", "Bad Gateway"));
+    this->statuscodes->insert(std::make_pair("503", "Service Unavailable"));
+    this->statuscodes->insert(std::make_pair("504", "Gateway Timeout"));
 }
 
 struct resp_h AResponse::getResData()

@@ -2,6 +2,7 @@
 * function that handling sockets sematics, epoll and connections
 * in general
 */
+#include <string>
 #include "../includes/Iconnect.hpp"
 #include <iostream>
 #include <cstring>

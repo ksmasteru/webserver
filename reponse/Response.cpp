@@ -1,4 +1,4 @@
-// flags done
+// flags done : execept c++98 for addCookiesHeader.
 #include "../includes/Response.hpp"
 #include "../includes/cgiHandler.hpp"
 #include <fstream>
@@ -64,7 +64,7 @@ std::string Response::RspStatusline(unsigned int code)
 
 std::string Response::getTime()
 {
-    std::time_t now = std::time(nullptr);
+    std::time_t now = std::time(00);
     std::tm *gmt = std::gmtime(&now);
     char buffer[100];
     std::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
@@ -125,22 +125,21 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
 
 std::string content(std::string extension )
 {
-   std::map<std::string, std::string> contentMap = {
-        {"html", "text/html"},
-        {"htm",  "text/html"},
-        {"ico",  "image/png"},
-        {"css",  "text/css"},
-        {"js",   "application/javascript"},
-        {"json", "application/json"},
-        {"png",  "image/png"},
-        {"jpg",  "image/jpg"},
-        {"jpeg", "image/jpeg"},
-        {"gif",  "image/gif"},
-        {"svg",  "image/svg+xml"},
-        {"txt",  "text/plain"},
-        {"mp4", "video/mp4"},
-        {"", "text/plain"}
-    };
+    std::map<std::string, std::string> contentMap;
+    contentMap.insert(std::make_pair("html", "text/html"));
+    contentMap.insert(std::make_pair("htm",  "text/html"));
+    contentMap.insert(std::make_pair("ico",  "image/png"));
+    contentMap.insert(std::make_pair("css",  "text/css"));
+    contentMap.insert(std::make_pair("js",   "application/javascript"));
+    contentMap.insert(std::make_pair("json", "application/json"));
+    contentMap.insert(std::make_pair("png",  "image/png"));
+    contentMap.insert(std::make_pair("jpg",  "image/jpg"));
+    contentMap.insert(std::make_pair("jpeg", "image/jpeg"));
+    contentMap.insert(std::make_pair("gif",  "image/gif"));
+    contentMap.insert(std::make_pair("svg",  "image/svg+xml"));
+    contentMap.insert(std::make_pair("txt",  "text/plain"));
+    contentMap.insert(std::make_pair("mp4",  "video/mp4"));
+    contentMap.insert(std::make_pair("",     "text/plain"));
     return contentMap[extension];
 }
 
@@ -687,7 +686,7 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
                 "HTTP/1.1 504 Gateway Timeout\r\n"
                 << "Content-Type: text/html\r\n"
                 << "Content-Length: "
-                << std::to_string(body.length()) + "\r\n"
+                << longlongToString(body.length()) + "\r\n"
                                                 << "Connection: close\r\n";
                 addCookiesHeader(header, this->_request);
             header << "\r\n";
@@ -1188,12 +1187,12 @@ std::map<std::string, std::string> Response::getDirectoryEntries(std::string& pa
     std::cout << "directory to open is " << path << std::endl;
     DIR* dir = opendir(path.c_str());
     struct stat st;
-    if (dir == nullptr)
+    if (dir == 0)
     {
         throw ("opendir");
     }
     struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr)
+    while ((entry = readdir(dir)) != 0)
     {
         fullpath = path + "/" + entry->d_name;
         std::cout << "fullpath is " << fullpath << std::endl;

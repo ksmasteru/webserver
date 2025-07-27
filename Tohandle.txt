@@ -88,3 +88,5 @@ should requestFile struct be reset during a reset.
 
 
 last update : tests for rediriction do work ; check if redirection response is sent properly
+
+to do : for flags cgiHandlerc++98 flags. addcookies c++98, request.cpp:fallthrough.
