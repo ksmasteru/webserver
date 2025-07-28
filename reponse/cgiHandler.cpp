@@ -22,8 +22,6 @@ Cgi::~Cgi()
 void Cgi::cleanup_resources()
 {
     if (envp) {
-        for (int i = 0; envp[i]; ++i)
-            free(envp[i]);
         delete[] envp;
         envp = NULL;
     }

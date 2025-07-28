@@ -1,5 +1,6 @@
 #include "../includes/utils.hpp"
 #include <iostream>
+#include <cstdlib>
 
 int stringToInt(const std::string& str) {
     std::istringstream iss(str);
@@ -56,7 +57,6 @@ std::string generateUniqueFilename() {
     
     // Initialize random seed
     srand(static_cast<unsigned int>(time(NULL) ^ clock()));
-    
     for (int i = 0; i < 6; ++i) {
         int index = rand() % chars.size();
         randomStr += chars[index];

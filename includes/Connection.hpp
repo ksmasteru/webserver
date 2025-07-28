@@ -20,27 +20,11 @@ class Connection{
         bool _timeOut;
         bool _writeMode;
         Request request;
-        struct timeval getTime()
-        {
-            return this->startTime;
-        }
-        struct timeval getConnectionTime()
-        {
-            return (this->connectionTime);
-        }
-        void    resetTime()
-        {
-            gettimeofday(&startTime, nullptr);
-        }
+        struct timeval getTime();
+        struct timeval getConnectionTime();
+        void    resetTime();
         Response response;
-        Connection(int client_fd, struct timeval& timeout){
-            _timeOut = false;
-            _client_fd = client_fd;
-            startTime = timeout;
-            _writeMode = false;
-            gettimeofday(&connectionTime, nullptr);
-        }
-        void resetConnection(){
-        }
-        ~Connection(){}
+        Connection(int client_fd, struct timeval& timeout);
+        void resetConnection();
+        ~Connection();
 };

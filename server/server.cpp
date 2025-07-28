@@ -518,7 +518,7 @@ void Server::setHost(const std::string &host)
 void Server::setPort(int port)
 {
     if (port > 65535 || port < 1)
-        throw std::runtime_error("Error: Invalid port number: " + std::to_string(port));
+        throw std::runtime_error("Error: Invalid port number");
     _ports.push_back(port);
 }
 

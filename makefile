@@ -1,6 +1,6 @@
 NAME = apache
 CC := c++
-CFLAGS := -Wall -Wextra -Werror #-std=c++98
+CFLAGS := -Wall -Wextra -Werror -std=c++98
 
 SRCS = utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
 reponse/Response.cpp server/serverManager.cpp utils/trim.cpp reponse/cgiHandler.cpp \

@@ -685,20 +685,19 @@ std::string Request::getExtension()
         extension = headers["Content-Type"];
     else
         return extension;
-    std::map<std::string, std::string> contentMap = {
-    {"text/html", ".html"},
-    {"image/png", ".ico"},
-    {"text/css", ".css"},
-    {"application/javascript", ".js"},
-    {"application/json", ".json"},
-    {"image/jpg", ".jpg"},
-    {"image/jpeg", ".jpeg"},
-    {"image/gif", ".gif"},
-    {"image/svg+xml", ".svg"},
-    {"text/plain", ".txt"},
-    {"video/mp4", ".mp4"},
-    {"", ".bin"}
-    };
+    std::map<std::string, std::string> contentMap;
+    contentMap["text/html"] = ".html";
+    contentMap["image/png"] = ".ico";
+    contentMap["text/css"] = ".css";
+    contentMap["application/javascript"] = ".js";
+    contentMap["application/json"] = ".json";
+    contentMap["image/jpg"] = ".jpg";
+    contentMap["image/jpeg"] = ".jpeg";
+    contentMap["image/gif"] = ".gif";
+    contentMap["image/svg+xml"] = ".svg";
+    contentMap["text/plain"] = ".txt";
+    contentMap["video/mp4"] = ".mp4";
+    contentMap[""] = ".bin";
     return contentMap[extension];
 }
  // deprecated:
