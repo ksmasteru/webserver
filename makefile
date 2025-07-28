@@ -1,10 +1,10 @@
 NAME = apache
 CC := c++
-CFLAGS := 
+CFLAGS := -Wall -Wextra -Werror #-std=c++98
 
 SRCS = utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
 reponse/Response.cpp server/serverManager.cpp utils/trim.cpp reponse/cgiHandler.cpp \
-reponse/Aresponse.cpp
+reponse/Aresponse.cpp config/Location.cpp config/ConfigParser.cpp
 
 HEADERS := includes/webserver.hpp includes/AResponse.hpp includes/Iconnect.hpp includes/Response.hpp \
 includes/server.hpp includes/utils.hpp includes/webserver.hpp includes/Location.hpp \
@@ -15,10 +15,10 @@ OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC)  $(OBJS) -o $(NAME)
+	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
 
 %.o: %.cpp
-	$(CC) -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(OBJS)

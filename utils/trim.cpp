@@ -1,19 +1,28 @@
 #include "../includes/utils.hpp"
 #include "../includes/webserver.hpp"
+#include <algorithm>
+#include <cctype>
+#include <sstream>
+
+bool isNotSpace(unsigned char ch) {
+    return !std::isspace(ch);
+}
 
 void trim(std::string& str) {
     // Remove leading whitespace
-    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }));
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), isNotSpace));
     
     // Remove trailing whitespace
-    str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), str.end());
+    // Find the last non-whitespace character
+    std::string::reverse_iterator it = str.rbegin();
+    while (it != str.rend() && std::isspace(*it)) {
+        ++it;
+    }
+    // Erase from the base of the reverse iterator to the end
+    str.erase(it.base(), str.end());
 }
 
-std::string extractValue(const std::string& line, const std::string& directive) 
+std::string extractValue(const std::string& line, const std::string& directive)
 {
     size_t start = line.find(directive) + directive.length();
     std::string value = line.substr(start);
@@ -23,7 +32,7 @@ std::string extractValue(const std::string& line, const std::string& directive)
     
     // Remove trailing semicolon if present
     if (!value.empty() && value[value.length() - 1] == ';') {
-        value.pop_back();
+        value = value.substr(0, value.length() - 1);
     }
     
     trim(value);

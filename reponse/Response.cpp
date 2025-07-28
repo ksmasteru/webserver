@@ -5,6 +5,10 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <iomanip>
+#include <ctime>
+#include <cstdlib>
+#include <sstream>
+
 Response::Response()
 {
     fileOffset = 0;
@@ -77,10 +81,15 @@ void Response::addCookiesHeader(std::ostringstream& ofs, Request* req)
     std::map<std::string, std::string>::iterator it = req->cookiesMap.begin();
     if (it == req->cookiesMap.end())
     {
-        // generate random session id
-        std::chrono::time_point<std::chrono::system_clock> now = std::chrono::system_clock::now();
-        std::time_t now_c = std::chrono::system_clock::to_time_t(now);
-        std::string sessionId = std::to_string(now_c) + std::to_string(rand() % 10000);
+        std::time_t now_c = std::time(0);
+        
+        std::ostringstream timeStr;
+        timeStr << now_c;
+        
+        std::ostringstream randStr;
+        randStr << (rand() % 10000);
+        
+        std::string sessionId = timeStr.str() + randStr.str();
         ofs << "Set-Cookie: sessionId=" << sessionId << "; Path=/; HttpOnly\r\n";
     }
     else

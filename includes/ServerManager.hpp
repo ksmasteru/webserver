@@ -3,17 +3,20 @@
 #include "webserver.hpp"
 #include "Iconnect.hpp"
 
+class Server;
+class Connection;
+
+
 // handles epoll :
 class ServerManager
 {
 private:
-    ServerManager() = delete; // ?
+    ServerManager();
 
 public:
     std::vector<Server> servers;
-    // replace serverSockets from vector<int> to vector<vectore<int>> where each element is a server and in each element the sockets of the server
 
-    std::vector<int> serverSockets; // replace it by serversockets inside servers (view diagram).
+    std::vector<int> serverSockets;
     std::map<int, Connection *> clients;
     int epoll_fd;
     struct epoll_event epollEventsBuffer[MAX_EVENTS];
