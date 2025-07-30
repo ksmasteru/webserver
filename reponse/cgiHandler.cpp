@@ -1,5 +1,5 @@
-// flags done
 #include "../includes/cgiHandler.hpp"
+#include <cstdlib>
 
 Cgi::Cgi()
     : envp(NULL), pid(0), timeout(DEFAULT_CGI_TIMEOUT)
@@ -88,13 +88,17 @@ void Cgi::load_into_envp()
     std::ostringstream contentTypeStream;
     envs.push_back("CONTENT_TYPE=" + contentTypeStream.str());
     
-    for (const auto& [k, v] : req->getHeaders())
+    std::map<std::string, std::string> headers = req->getHeaders();
+    for (std::map<std::string, std::string>::const_iterator it = headers.begin(); 
+         it != headers.end(); ++it)
     {
-        std::string key = k;
+        std::string key = it->first;
+        const std::string& value = it->second;
+        
         for (size_t i = 0; i < key.size(); ++i) {
             key[i] = (key[i] == '-') ? '_' : std::toupper(key[i]);
         }
-        envs.push_back("HTTP_" + key + "=" + v);
+        envs.push_back("HTTP_" + key + "=" + value);
     }
     
     envp = new char *[envs.size() + 1];
@@ -220,8 +224,6 @@ void Cgi::handle_cgi_output()
     if (fds[0] == -1)
         throw std::runtime_error("No CGI output");
 
-
-
     std::string output;
     char buf[4096];
     ssize_t r;
@@ -267,8 +269,8 @@ void Cgi::parse_cgi_output(const std::string& output)
     std::string line;
 
     while (std::getline(stream, line)) {
-        if (!line.empty() && line.back() == '\r')
-            line.pop_back();
+        if (!line.empty() && line[line.size()-1] == '\r')
+            line = line.substr(0, line.size()-1);
 
         size_t delim = line.find(':');
         if (delim != std::string::npos) {

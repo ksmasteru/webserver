@@ -1,4 +1,4 @@
-#include "../inlcudes/Connection.hpp"
+#include "../includes/Connection.hpp"
 
 struct timeval Connection::getTime()
 {
@@ -19,7 +19,7 @@ Connection::Connection(int client_fd, struct timeval& timeout)
     _client_fd = client_fd;
     startTime = timeout;
     _writeMode = false;
-    gettimeofday(&connectionTime, nullptr);
+    gettimeofday(&connectionTime, NULL);
 }
 // why is this empty
 void Connection::resetConnection()
