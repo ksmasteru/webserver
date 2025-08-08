@@ -194,7 +194,6 @@ std::string AResponse::buildCgiResponse()
         
         return response_stream.str();
     }
-    
 
 void AResponse::resetCgiData()
 {
@@ -229,4 +228,9 @@ void AResponse::mergeCgiResponse()
             this->response << full_response;
             this->resp_msg = this->response.str().c_str();
         }
+}
+
+void AResponse::setRequest(Request *req)
+{
+    this->_request = req;
 }

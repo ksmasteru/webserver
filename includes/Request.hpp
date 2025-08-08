@@ -137,6 +137,7 @@ class  Request{ // read event.
         RequestFile.fd = -1; 
         _requestErrors.notAllowed = false;
         _requestErrors.badRequest = false;
+        cookiesMap.clear();
     }
     int getState(){
         return this->MainState;

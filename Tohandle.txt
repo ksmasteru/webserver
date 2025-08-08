@@ -90,3 +90,11 @@ should requestFile struct be reset during a reset.
 last update : tests for rediriction do work ; check if redirection response is sent properly
 
 to do : for flags cgiHandlerc++98 flags. addcookies c++98, request.cpp:fallthrough.
+
+handle write event has detected a timeout on client : 6
+[1]    168616 segmentation fault (core dumped)  ./apache configs/webserv.conf
+segfault when launching a request and then exiting immediately.
+fix exit 1 and server.cpp handleWritevent for const char * throws.
+
+
+get rid of AResponse _request;

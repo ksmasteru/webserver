@@ -245,7 +245,6 @@ void Server::handleWriteEvent(int fd)
         std::cout << "client not found " << std::endl;
         return ;
     }
-
     else if (this->clients[fd]->_timeOut)
     {
         std::cout << "handle write event has detected a timeout on client : " << fd << std::endl;
@@ -259,7 +258,8 @@ void Server::handleWriteEvent(int fd)
             int a = unlink(clients[fd]->request.RequestFile.fileName.c_str());
             std::cout << "unlink status " << a << " for : " << clients[fd]->request.RequestFile.fileName << std::endl;
         }
-        this->clients[fd]->response.sendTimedOutResponse(fd);
+        std::cout << "request state " << clients[fd]->request.getState() << std::endl;
+        this->clients[fd]->response.sendTimedOutResponse(fd, &clients[fd]->request);
         // close connection;
         removeClient(fd);
         return ;
@@ -270,6 +270,7 @@ void Server::handleWriteEvent(int fd)
         //usleep(5000);
         return ;
     }
+    clients[fd]->response.setRequest(&clients[fd]->request);
     // make reponse then write it.
     // too big of a file : state -> sending body :
     // attributees of response .
@@ -457,7 +458,7 @@ int Server::run()
         // delete timedout  clients;
         for (int i = 0; i < num_events; i++)
         {
-            if ((data.events[i].data.fd == data.sfd))
+            if ((data.events[i].data.fd) == (data.sfd))
             {
                 std::cout << "server socket" << std::endl;
                 addNewClient();

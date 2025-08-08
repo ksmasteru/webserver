@@ -20,6 +20,7 @@ Response::Response()
     this->settings_set = false;
     this->settings.autoIndexed = false;
     this->settings.dirUrl = false;
+    this->settings.indexFile = false;
 }
 
 Response::Response(const std::string& type, Request* req, std::map<std::string, 
@@ -33,6 +34,7 @@ std::string>*status, int client_fd) : AResponse(type, req, status, client_fd)
     this->path_set = false;
     this->settings_set = false;
     this->settings.dirUrl = false;
+    this->settings.indexFile = false;
 }
 
 // response header should be lsat to get filled.
@@ -73,28 +75,25 @@ std::string Response::getTime()
     char buffer[100];
     std::strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S GMT", gmt);
     return (buffer);
-    
 }
 
-void Response::addCookiesHeader(std::ostringstream& ofs, Request* req)
+void Response::addCookiesHeader(std::ostringstream& ofs)
 {
-    std::map<std::string, std::string>::iterator it = req->cookiesMap.begin();
-    if (it == req->cookiesMap.end())
+    std::map<std::string, std::string>::iterator it = this->_request->cookiesMap.begin();
+    if (it == _request->cookiesMap.end())
     {
         std::time_t now_c = std::time(0);
-        
         std::ostringstream timeStr;
         timeStr << now_c;
         
         std::ostringstream randStr;
         randStr << (rand() % 10000);
-        
         std::string sessionId = timeStr.str() + randStr.str();
         ofs << "Set-Cookie: sessionId=" << sessionId << "; Path=/; HttpOnly\r\n";
     }
     else
     {
-        while (it != req->cookiesMap.end())
+        while (it != _request->cookiesMap.end())
         {
             ofs << "Set-Cookie: " << it->first << "=" << it->second << "; Path=/; HttpOnly\r\n";
             ++it;
@@ -125,7 +124,7 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Transfer-Encoding: chunked \r\n"
             << "Connection: " + alive + " \r\n";
     }
-    addCookiesHeader(header, this->_request);
+    addCookiesHeader(header);
     header << "\r\n";
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
@@ -213,7 +212,7 @@ void Response::sendChunkHeader (int cfd, int readBytes)
 int Response::getFd(const char *path)
 {
     if (openfile)
-    return fd;
+        return fd;
     this->fd = open(path, O_RDONLY);
     if (this->fd == -1)
         throw ("couldnt open file");
@@ -348,6 +347,9 @@ std::string getFileName(std::string path, std::string folderName)
 void Response::setResponseSettings(Location& _location, int index, bool dirUrl)
 {
     std::vector<std::string> methods = _location.getAllowedMethods();
+    // new 8/8 : index file flag;
+    if (access(_location.getIndex().c_str(), R_OK) != -1)
+        this->settings.indexFile = true;
     this->settings.autoIndexed = _location.getAutoindex();
     this->settings.dirUrl = dirUrl;
     this->settings.Locationindex = index;
@@ -394,6 +396,8 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
                 std::cout << "First condition" << std::endl;
                 std::cout << "to return " << locations[i].getIndex() << std::endl;
                 setResponseSettings(locations[i], i, true);
+                if (this->settings.indexFile)/*priority of index file 8/8*/
+                    this->settings.autoIndexed = false;
                 if (this->settings.autoIndexed)
                 {
                     std::cout << "auto index detected ..." << std::endl;
@@ -609,7 +613,12 @@ void sendSimpleErrorPage(int cfd, int errorCode)
         body;
 
     // send to client
-    write(cfd, response.c_str(), response.size());
+    if (send(cfd, response.c_str(), response.size(), MSG_NOSIGNAL) == -1)
+    {
+        // error handling
+        std::cout << "send failed on sendSimpleErrorPage" << std::endl;
+        throw (cfd);
+    }
 }
 
 // fix error page from static to dynamic from config file
@@ -647,8 +656,9 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
         if (access(path.c_str(), R_OK) == -1)
         {
             std::cout << "missing default error page " << errorCode << std::endl;
-            sendSimpleErrorPage(cfd, errorCode);
             this->state = ResponseDone;
+            openfile = false;
+            sendSimpleErrorPage(cfd, errorCode);
             return;
             // throw(cfd);
             // instead of throwing send a simple html response as Code
@@ -662,19 +672,18 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
     if (readBytes < 0)
         throw ("read fail");
     std::cout << "readBytes are " << readBytes << std::endl;
-    int sent = send (cfd, buffer, readBytes, MSG_NOSIGNAL);
+    int sent = send(cfd, buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
     {
         close(fd);
         openfile = false;
         this->state = ResponseDone;
-        throw("send fail on error page");
+        throw (cfd);
         // should here also throw an error. ?
     }
     close(fd);
     this->state = ResponseDone;
 }
-
 
 void Response::redirectResponse(int cfd, const char *path)
 {
@@ -754,7 +763,7 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
                 << "Content-Length: "
                 << longlongToString(body.length()) + "\r\n"
                                                 << "Connection: close\r\n";
-                addCookiesHeader(header, this->_request);
+                addCookiesHeader(header);
             header << "\r\n";
             std::string response = header.str() + body;
             // Send the response to the client
@@ -859,6 +868,28 @@ void Response::sendCgiResponse(int cfd)
 // send repsonse and close cfd for GET!!!.
 // this response if for GET REQUEST ONLLY IF IN CONFIG FILE A PATH ISNT ALLOWED GET RETURNS 405 Method Not Allowed
 // web
+int Response::check_is_file(const char *path) {
+    struct stat sb;
+    
+    if (stat(path, &sb) == -1) {
+        std::cerr << "file doesn't exist or permission denied" << std::endl;
+        return -1;  // stat error (file doesn't exist or permission denied)
+    }
+    
+    if (S_ISREG(sb.st_mode)) {
+        // It’s a regular file
+        return 0;
+    } else if (S_ISDIR(sb.st_mode)) {
+        // It’s a directory — return error
+        std::cerr << "Error: Path is a directory" << std::endl;
+        return -2;
+    } else {
+        // It’s something else (symlink, socket, fifo, etc.)
+        std::cerr << "Error: Path is not a regular file\n" << std::endl;
+        return -3;
+    }
+}
+
 void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &errorPages,
     std::vector<Location> &locations)
 {
@@ -874,17 +905,17 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
         if (this->settings.redirected == true)
             return (redirectResponse(cfd, this->filePath.c_str()));
         if (this->settings.autoIndexed && this->settings.dirUrl)
-            return (DirectoryListing(cfd, this->filePath));
+            return (DirectoryListing(cfd, this->filePath, errorPages));
         if (!this->settings.GET)
         {
-            // fix
+
             return errorResponsePage(cfd, errorPages, 405);
             // return (notAllowedGetResponse(cfd));
         }
         // checking if the path actualy exist and allowed to be accessed.
         if (access(this->filePath.c_str(), F_OK) == 0)
         {
-            if (access(this->filePath.c_str(), R_OK) == -1)
+            if ((check_is_file(this->filePath.c_str()) != 0) || (access(this->filePath.c_str(), R_OK) == -1))
             {
                 this->res_data.status = 403;
                 return (errorResponsePage(cfd, errorPages, 403));
@@ -925,7 +956,7 @@ void Response::handleBadRequest(int cfd, Request *req)
     if (send(cfd, resp.c_str(), resp.length(), MSG_NOSIGNAL) == -1)
     {
         std::cout << "send error in handle bad Request" << std::endl;
-        throw (1);
+        throw (cfd);
     }
     this->state = ResponseDone;
 }
@@ -935,7 +966,7 @@ void Response::successPostResponse(int cfd)
 {
     std::ostringstream ofs;
     ofs << "HTTP/1.1 201 Created \r\n";
-    addCookiesHeader(ofs, this->_request);
+    addCookiesHeader(ofs);
     ofs << "Connection: Close \r\n"
         << "\r\n";
     std::string header = ofs.str();
@@ -1016,15 +1047,14 @@ void Response::deleteResponse(int cfd, Request* req)
     this->state = ResponseDone;
 }
 
-void Response::sendTimedOutResponse(int cfd)
+void Response::sendTimedOutResponse(int cfd, Request* req)
 {
     std::ostringstream ofs;
-
     ofs << "HTTP/1.1 408 Request Timeout\r\n";
-    addCookiesHeader(ofs, this->_request);
+    if (req->getState() != 0)
+        addCookiesHeader(ofs);
     ofs << "Content-Length: 0\r\n"
         << "\r\n";
-    
     std::string msg = ofs.str();
     if (send(cfd, msg.c_str(), msg.length() , MSG_NOSIGNAL) == -1)
         throw (cfd);
@@ -1171,7 +1201,7 @@ std::string Response::buildCgiResponse()
     } else {
         response_stream << "Connection: close\r\n";
     }
-    addCookiesHeader(response_stream, this->_request);
+    addCookiesHeader(response_stream);
     response_stream << "\r\n"; 
     response_stream << cgi_body;
     return response_stream.str();
@@ -1259,7 +1289,9 @@ std::map<std::string, std::string> Response::getDirectoryEntries(std::string& pa
     struct stat st;
     if (dir == 0)
     {
-        throw ("opendir");
+        std::cout << "directory " << path.c_str() << " not found" << std::endl;
+        throw (1);
+        //throw ("opendir");
     }
     struct dirent* entry;
     while ((entry = readdir(dir)) != 0)
@@ -1278,10 +1310,36 @@ std::map<std::string, std::string> Response::getDirectoryEntries(std::string& pa
     return res;
 }
 // dir = ./pages/images
-void Response::DirectoryListing(int cfd, std::string& dir)
+void Response::DirectoryListing(int cfd, std::string& dir, std::map<int, std::string>& errorPages)
 {
 
-    std::map<std::string, std::string> entries_info = getDirectoryEntries(dir);
+    std::map<std::string, std::string> entries_info;
+    try {
+        entries_info = getDirectoryEntries(dir);}
+    catch (int)
+    {
+        // non existing direction
+        if (!this->settings.GET)
+        {
+
+            return errorResponsePage(cfd, errorPages, 405);
+            // return (notAllowedGetResponse(cfd));
+        }
+        // checking if the path actualy exist and allowed to be accessed.
+        if (access(this->filePath.c_str(), F_OK) == 0)
+        {
+            if ((check_is_file(this->filePath.c_str()) != 0) || (access(this->filePath.c_str(), R_OK) == -1))
+            {
+                this->res_data.status = 403;
+                return (errorResponsePage(cfd, errorPages, 403));
+            }
+        }
+        else /*page not found*/
+        {
+            this->res_data.status = 404;
+            return (errorResponsePage(cfd, errorPages, 404));
+        }
+    }
     std::ostringstream body;
 
     body << "<html>\n"

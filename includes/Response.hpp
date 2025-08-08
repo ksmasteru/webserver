@@ -22,6 +22,7 @@ struct resp_settings{
     int Locationindex;
     bool redirected; // e.g : from /images --> /images/
     bool dirUrl;
+    bool indexFile;
 };
 
 class Response : public AResponse
@@ -60,6 +61,7 @@ class Response : public AResponse
         bool isAlive() const;
         void sendChunkHeader (int, int);
         void successPostResponse(int);
+        int check_is_file(const char *path);
         int getState(){return this->state;}
         void setState(ResponseState st){
             state = st;
@@ -77,6 +79,7 @@ class Response : public AResponse
             this->settings.autoIndexed = false;
             this->settings.dirUrl = false;
             this->chunked = false;
+            this->settings.indexFile = false;
         }
         void deleteResponse(int, Request*);
         void sendNotFoundPage(const char* path, int cfd, bool redir);
@@ -91,7 +94,7 @@ class Response : public AResponse
         std::string getFolderName(const std::string& path);
         void redirectResponse(int, const char*);
         void handleBadRequest(int, Request*);
-        void sendTimedOutResponse(int);
+        void sendTimedOutResponse(int, Request*);
         void sendCgiResponse(int);
 
         // new code for cgi response
@@ -115,11 +118,11 @@ class Response : public AResponse
         std::string getStatusMessage(int);
         
         // code for directory listing
-        void DirectoryListing(int, std::string&);
+        void DirectoryListing(int, std::string&, std::map<int, std::string>&);
         std::map<std::string, std::string> getDirectoryEntries(std::string&);
         
 
         // cookies
-        void addCookiesHeader(std::ostringstream& ofs, Request* req);
+        void addCookiesHeader(std::ostringstream& ofs);
 
 };
