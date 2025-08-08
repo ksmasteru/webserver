@@ -78,6 +78,7 @@ typedef struct s_FILE{
 struct requestErrors{
     bool notAllowed;
     bool badRequest;
+    bool ContentTooLarge;
 };
 
 class  Request{ // read event.
@@ -104,6 +105,8 @@ class  Request{ // read event.
     
     public:
     t_FILE  RequestFile;
+    bool    hasMaxBodySize;
+    size_t maxBodySize;
     bool openRequestFile;
     struct requestErrors _requestErrors;
     mainState MainState;
@@ -137,7 +140,10 @@ class  Request{ // read event.
         RequestFile.fd = -1; 
         _requestErrors.notAllowed = false;
         _requestErrors.badRequest = false;
+        _requestErrors.ContentTooLarge = false;
         cookiesMap.clear();
+        hasMaxBodySize = false;
+        maxBodySize = 0;
     }
     int getState(){
         return this->MainState;

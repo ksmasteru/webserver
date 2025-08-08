@@ -952,6 +952,11 @@ void Response::handleBadRequest(int cfd, Request *req)
             << "Content-Length: 0 \r\n"
             << "\r\n";
     }
+    else if (req->_requestErrors.ContentTooLarge)
+    {
+        ofs << "HTTP/1.1 413 Request Entity Too Large \r\n"
+            << "\r\n";
+    }
     std::string resp = ofs.str();
     if (send(cfd, resp.c_str(), resp.length(), MSG_NOSIGNAL) == -1)
     {

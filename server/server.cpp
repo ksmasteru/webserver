@@ -37,34 +37,6 @@ int Server::establishServer()
     */return (0);
 }
 
-/*testing : changing epoll watchlist.*/
-void Server::addNewClient()
-{
-    int client_fd = accept(data.sfd, NULL, 0);
-    // accept gives increasign values.
-    if (client_fd == -1)
-        throw ("client couldnt connect");
-    std::cout << "new client Connected : id " << client_fd << std::endl;
-    // clear
-    struct timeval timeout;
-    // set starting time in client, time map close the connection if times exces 10.
-    timeout.tv_sec = 10;
-    timeout.tv_usec = 0;
-    if (setsockopt(data.sfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) == -1)
-        throw std::runtime_error("setsockopt failed");
-    struct epoll_event event;
-    event.events = EPOLLIN | EPOLLHUP | EPOLLERR; // reading and error. 
-    event.data.fd = client_fd;
-    if (epoll_ctl(data.epollfd, EPOLL_CTL_ADD, client_fd, &event) == -1)
-        throw ("epoll_ctl fail");
-    set_nonblocking(client_fd);
-    // create a connection object and att it to <fd, connection>map;
-    struct timeval startTime;
-    gettimeofday(&startTime, 0);
-    Connection* new_client = new Connection(client_fd, startTime);
-    // makes no sense.
-    this->clients[client_fd] = new_client;
-}
 
 void Server::addNewClient(int epoll_fd, int socket_fd)
 {
@@ -95,7 +67,10 @@ void Server::addNewClient(int epoll_fd, int socket_fd)
     gettimeofday(&startTime, 0);
     Connection* new_client = new Connection(client_fd, startTime);
     // makes no sense.
-    this->clients[client_fd] = new_client;  
+    this->clients[client_fd] = new_client;
+    // adding max body size attributes 8/8
+    new_client->request.hasMaxBodySize = this->gethasMaxBodySize();
+    new_client->request.maxBodySize = this->getMaxBodySize();
 }
 
 void Server::removeClient(int   fd)
@@ -185,7 +160,17 @@ void Server::handleReadEvent(int fd)
             {
                 std::cout << "caught exeception code : " << n << std::endl;
                 clients[fd]->request.MainState = Done;
-                clients[fd]->request._requestErrors.notAllowed = true;
+                switch (n)
+                {
+                    case 405:
+                        clients[fd]->request._requestErrors.notAllowed = true;
+                        break;
+                    case 413:
+                        clients[fd]->request._requestErrors.ContentTooLarge = true;
+                        break;
+                    default:
+                        break; 
+                }
                 //return (notAllowedPostResponse(fd));
                 //removeClient(fd);
             }
@@ -205,10 +190,18 @@ void Server::handleReadEvent(int fd)
             catch (int n)
             {
                 std::cout << "caught exeception code : " << n << std::endl;
-                clients[fd]->request._requestErrors.notAllowed = true;
                 clients[fd]->request.MainState = Done;
-                //notAllowedPostResponse(fd);// should not send ..until epoll allows it.
-                //removeClient(fd);
+                switch (n)
+                {
+                    case 405:
+                        clients[fd]->request._requestErrors.notAllowed = true;
+                        break;
+                    case 413:
+                        clients[fd]->request._requestErrors.ContentTooLarge = true;
+                        break;
+                    default:
+                        break; 
+                }
             }
             break;
         default:
@@ -276,7 +269,8 @@ void Server::handleWriteEvent(int fd)
     // too big of a file : state -> sending body :
     // attributees of response .
     // habdling bad requests!.
-    if (clients[fd]->request._requestErrors.badRequest || clients[fd]->request._requestErrors.notAllowed)
+    if (clients[fd]->request._requestErrors.badRequest || 
+        clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed)
     {
         std::cout << "bad request flag detected" << std::endl;
         try {
@@ -443,54 +437,6 @@ bool Server::clientExist(int cfd)
     return (false);
 }
 
-int Server::run()
-{
-    while (true)
-    {
-        // unbind Timedout now set a flag : handlewrite event is to be responsible to detaching
-        // timed out clients;
-        unBindTimedOutClients();
-        int num_events = epoll_wait(data.epollfd, data.events, MAX_EVENTS, -1);
-        if (num_events == -1)
-        {
-            throw("off events!");
-        }
-       // std::cout << "num event ist " << num_events << std::endl;
-        // delete timedout  clients;
-        for (int i = 0; i < num_events; i++)
-        {
-            if ((data.events[i].data.fd) == (data.sfd))
-            {
-                std::cout << "server socket" << std::endl;
-                addNewClient();
-                continue;
-            }
-            else if (data.events[i].events & EPOLLIN)
-            {
-                /*if (clientWasRemoved(data.events[i].data.fd))
-                {
-                    addNewClient();
-                    continue;
-                }*/
-                handleReadEvent(data.events[i].data.fd);
-            }
-            if (data.events[i].events & EPOLLOUT)
-            {
-                // if client connection was closed skip!
-                handleWriteEvent(data.events[i].data.fd);
-            }
-            else if (data.events[i].events & EPOLLHUP || data.events[i].events & EPOLLERR)
-            {
-                handelSocketError(data.events[i].data.fd);
-            }
-            // handle epollERr and epollhup
-        }
-    }
-    std::cout << "loop exited" << std::endl;
-    close(data.sfd);
-    close(data.epollfd);
-    return 0;
-}
 
 void Server::loadstatuscodes(const char* filepath)
 {
@@ -608,6 +554,11 @@ bool isValidConfigFile(int ac, char **av)
         return (false);
     }
     return (true);
+}
+
+size_t Server::getMaxBodySize()
+{
+    return (this->_clientMaxBodySize);
 }
 
 int main(int ac, char **av)

@@ -88,6 +88,9 @@ Request::Request()
     totLent = 0;
     _requestErrors.badRequest = false;
     _requestErrors.notAllowed = false;
+    _requestErrors.ContentTooLarge = false;
+    hasMaxBodySize = false;
+    maxBodySize = 0;
 }
 
 const std::string&   Request::getRawRequest() const{
@@ -495,7 +498,15 @@ void Request::setUpPostFile()
         throw ("Bad Request");/*RFC 7230*/
     // determine file size based on transfer.
     if (this->RequestFile.type == Content_Length)
+    {
         this->RequestFile.size = stringToLong(headers["Content-Length"]);
+        if (this->hasMaxBodySize && (this->maxBodySize > this->RequestFile.size))
+        {
+            std::cerr << "error : maxbodysize has been exceeded 413" << std::endl;
+            this->_requestErrors.ContentTooLarge = true;
+            throw (413);
+        }
+    }
     else
     {
         this->RequestFile.size = 0;
@@ -546,9 +557,10 @@ void Request::parseRequestBody(char *request, int offset, int readBytes, std::ve
     // new code [15/06] check if post method is allowed.
     // only allow uploads to
     if (!isValidPostPath(locations))
-        throw (2);
+        throw (405);
     if (!openRequestFile)
         setUpPostFile();
+    // here to check for max body size.
     switch(this->RequestFile.type)
     {
         case Content_Length:

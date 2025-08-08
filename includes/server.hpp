@@ -81,4 +81,5 @@ class Server{
         // 
         void sethasMaxBodySize();
         bool gethasMaxBodySize();
+        size_t getMaxBodySize();
 };
