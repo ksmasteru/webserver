@@ -667,7 +667,7 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
     }
     this->RequestFile.offset += writtenData;
     // checck if done.
-    if (this->RequestFile.offset == this->RequestFile.size)
+    if (this->RequestFile.offset >= this->RequestFile.size)
     {
         std::cout << "File received completely" << std::endl;
         close(this->RequestFile.fd);
