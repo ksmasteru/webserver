@@ -98,3 +98,6 @@ fix exit 1 and server.cpp handleWritevent for const char * throws.
 
 
 get rid of AResponse _request;
+
+to handle : !! timeout in header should occur when some bytes has been read in case of a coonection reset
+it shouldnt immediately timeout.

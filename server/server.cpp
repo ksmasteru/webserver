@@ -273,6 +273,7 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed)
     {
         std::cout << "bad request flag detected" << std::endl;
+        exit(1);
         try {
             clients[fd]->response.handleBadRequest(fd, &clients[fd]->request);}
         catch (int n)

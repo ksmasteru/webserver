@@ -473,19 +473,11 @@ void Request::setUpPostFile()
     fileName += getExtension();
     this->RequestFile.fileName = fileName;
     std::cout << "filename for upload ist " << fileName << std::endl;
-    try 
+    this->RequestFile.fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
+    if (this->RequestFile.fd == -1)/*should throw an error : stop request.*/
     {
-        this->RequestFile.fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
-        if (this->RequestFile.fd == -1)/*should throw an error : stop request.*/
-        {
-            std::cout << "errno code: " << errno << std::endl;
-            throw ("couldnt open post fd"); // why ?
-        }
-    }
-    catch (const char* msg)
-    {
-        std::cout << msg << std::endl;
-        exit(1);
+        std::cout << "errno code: " << errno << std::endl;
+        throw ("couldnt open post fd"); // why ?
     }
     this->RequestFile.offset = 0;
     // setting up transfer type
@@ -500,10 +492,11 @@ void Request::setUpPostFile()
     if (this->RequestFile.type == Content_Length)
     {
         this->RequestFile.size = stringToLong(headers["Content-Length"]);
-        if (this->hasMaxBodySize && (this->maxBodySize > this->RequestFile.size))
+        if (this->hasMaxBodySize && (this->maxBodySize < this->RequestFile.size))
         {
             std::cerr << "error : maxbodysize has been exceeded 413" << std::endl;
             this->_requestErrors.ContentTooLarge = true;
+            this->MainState = Done;
             throw (413);
         }
     }
@@ -628,7 +621,16 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                 if (this->RequestFile.toWrite != 0)
                 {
                     writtendata = std::min(readBytes - start, this->RequestFile.toWrite);
-                    this->RequestFile.toWrite -= write(this->RequestFile.fd, request + start, writtendata);
+                    if (this->hasMaxBodySize && (this->maxBodySize >= (writtendata + this->RequestFile.offset)))
+                        this->RequestFile.toWrite -= write(this->RequestFile.fd, request + start, writtendata);
+                    else
+                    {
+                        std::cerr << "max body length exceeded on reading chunked data";
+                        this->RequestFile.state = chunk_done;
+                        this->_requestErrors.ContentTooLarge = true;
+                        break;
+                    }
+                    this->RequestFile.offset += writtendata;
                     offset += writtendata - 1;
                     break;
                 }
@@ -671,6 +673,20 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
 
 void Request::contentLengthBody(char *request, int offset, int readBytes)
 {
+    
+    if (this->hasMaxBodySize && maxBodySize > 0)
+    {
+        if ((this->RequestFile.offset +  readBytes - offset) > maxBodySize)
+        {
+            std::cerr << "max body length exceeded" << std::endl;
+            close(this->RequestFile.fd);
+            // file should be deleted...
+            this->openRequestFile = false;
+            this->MainState = Done;
+            this->_requestErrors.ContentTooLarge = true;
+            return;
+        }
+    }
     int writtenData = write(this->RequestFile.fd, request + offset,readBytes - offset);
     if (writtenData != readBytes - offset)
     {
@@ -679,7 +695,7 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
     }
     this->RequestFile.offset += writtenData;
     // checck if done.
-    if (this->RequestFile.offset >= this->RequestFile.size)
+    if (this->RequestFile.offset == this->RequestFile.size)
     {
         std::cout << "File received completely" << std::endl;
         close(this->RequestFile.fd);
