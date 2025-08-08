@@ -101,7 +101,10 @@ void ServerManager::establishServers()
                 struct sockaddr_in serverAddr;
                 int serverSocket = makePassiveSocket(&serverAddr, hosts[h], ports[p]);
                 if (serverSocket == -1)
-                    throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
+                {
+                    continue;
+                    // throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
+                }
                 servers[i].serverSockets.push_back(serverSocket); // added easy to manage | each server knows his sockets
                 serverSockets.push_back(serverSocket);
                 // add the new socket to epoll watch list

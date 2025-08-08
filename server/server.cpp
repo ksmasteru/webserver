@@ -8,6 +8,7 @@
 
 Server::Server()
 {
+    this->hasMaxBodySize = false;
     std::cout << "Launching Server Apache v1.0" << std::endl;
     //memset(&(this->data),0, sizeof(t_InetData)); //!!
 }
@@ -577,6 +578,17 @@ void Server::removeHost(std::string host)
             _hosts.erase(_hosts.begin() + i);
     }
 }
+
+void Server::sethasMaxBodySize()
+{
+    this->hasMaxBodySize = true;
+}
+
+bool Server::gethasMaxBodySize()
+{
+    return this->hasMaxBodySize;
+}
+
 
 bool isValidConfigFile(int ac, char **av)
 {

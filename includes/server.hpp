@@ -23,6 +23,7 @@ class Server{
         std::vector<int> _ports;
         std::vector<std::string> _hosts;
         std::vector<std::string> _serverNames;
+        bool hasMaxBodySize;
         size_t _clientMaxBodySize;
         std::map <int, std::string> _errorPages; // new
         std::vector<Location> _locations; // new 
@@ -76,4 +77,8 @@ class Server{
         bool clientExist(int);
         void notAllowedPostResponse(int cfd);
         void giveWritePermissions(int);
+
+        // 
+        void sethasMaxBodySize();
+        bool gethasMaxBodySize();
 };

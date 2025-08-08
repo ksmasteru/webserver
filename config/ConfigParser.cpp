@@ -152,6 +152,7 @@ void ConfigParser::parseServerBlock(std::ifstream& conf) {
                 }
                 size *= multiplier;
                 server.setClientMaxBodySize(size);
+                server.sethasMaxBodySize();
             } catch (...) {
                 std::cerr << "Error: Invalid client_max_body_size: " << size_str << std::endl;
                 exit(EXIT_FAILURE);
