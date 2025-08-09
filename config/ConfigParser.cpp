@@ -112,23 +112,23 @@ void ConfigParser::parseServerBlock(std::ifstream& conf) {
                 }
             }
         }
-        else if (startsWithDirective(line, "server_name")) {
-            std::string name = extractValue(line, "server_name");
-            if (name.empty())
-                throw std::runtime_error("Error: Missing port number in listen directive");
-            std::stringstream ss(name);
-            while (getline(ss, name, ' '))
-            {
-                try
-                {
-                    server.setServerName(name);
-                }
-                catch (...)
-                {
-                    throw std::runtime_error("Error: Invalid server name: " + name);
-                }
-            }
-        }
+        // else if (startsWithDirective(line, "server_name")) {
+        //     std::string name = extractValue(line, "server_name");
+        //     if (name.empty())
+        //         throw std::runtime_error("Error: Missing port number in listen directive");
+        //     std::stringstream ss(name);
+        //     while (getline(ss, name, ' '))
+        //     {
+        //         try
+        //         {
+        //             server.setServerName(name);
+        //         }
+        //         catch (...)
+        //         {
+        //             throw std::runtime_error("Error: Invalid server name: " + name);
+        //         }
+        //     }
+        // }
         else if (startsWithDirective(line, "client_max_body_size")) {
             std::string size_str = extractValue(line, "client_max_body_size");
             if (size_str.empty())

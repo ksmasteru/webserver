@@ -89,13 +89,13 @@ void Response::addCookiesHeader(std::ostringstream& ofs)
         std::ostringstream randStr;
         randStr << (rand() % 10000);
         std::string sessionId = timeStr.str() + randStr.str();
-        ofs << "Set-Cookie: sessionId=" << sessionId << "; Path=/; HttpOnly\r\n";
+        ofs << "Set-Cookie: sessionId=" << sessionId << "; Path=/\r\n";
     }
     else
     {
         while (it != _request->cookiesMap.end())
         {
-            ofs << "Set-Cookie: " << it->first << "=" << it->second << "; Path=/; HttpOnly\r\n";
+            ofs << "Set-Cookie: " << it->first << "=" << it->second << "; Path=/\r\n";
             ++it;
         }
     }

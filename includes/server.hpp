@@ -22,7 +22,7 @@ class Server{
     private:
         std::vector<int> _ports;
         std::vector<std::string> _hosts;
-        std::vector<std::string> _serverNames;
+        // std::vector<std::string> _serverNames;
         bool hasMaxBodySize;
         size_t _clientMaxBodySize;
         std::map <int, std::string> _errorPages; // new
@@ -50,7 +50,7 @@ class Server{
         //setters
         std::vector<std::string> getHosts();
         std::vector<int> getPorts() const;
-        std::vector<std::string> &getServerNames();
+        // std::vector<std::string> &getServerNames();
         size_t getClientMaxBodySize() const;
         const std::map<int, std::string> &getErrorPages() const;
         const std::vector<Location> &getLocations() const;
