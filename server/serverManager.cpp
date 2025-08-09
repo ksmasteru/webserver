@@ -10,20 +10,6 @@ ServerManager::ServerManager(std::vector<Server> &Servers) : servers(Servers)
         throw ("epoll create error");
 }
 
-/*
-bool ServerManager::isServerSocket(int fd)
-{
-    size_t lent = this->serverSockets.size();
-    for (int i = 0; i < lent; i++)
-    {
-        if (fd == serverSockets[i])
-            return (true);
-    }
-    return (false);
-}*/
-
-// return id of the server whose socket match the paramter
-// returns -1 on failure
 int ServerManager::isServerSocket(int fd)
 {
     for (size_t i = 0; i < servers.size(); i++)
@@ -34,15 +20,9 @@ int ServerManager::isServerSocket(int fd)
                 return i;
         }
     }
-    // for (int i = 0; i < serverSockets.size(); i++)
-    // {
-    //      if (serverSockets[i] == fd)
-    //         return (i);
-    // }
     return (-1);
 }
 
-// determine which server will have to handle the host port request combo.
 int ServerManager::findServerIndex(std::string host, std::string port, std::vector<Server> servers)
 {
     int targetPort = stringToInt(port);
@@ -140,9 +120,6 @@ void ServerManager::closeTimedOutClients()
         servers[i].unBindTimedOutClients();
 }
 
-// epoll loop : handles connection on all servers sockets.
-// determine which server is targeted and what type of connection action it should take.
-// Each server handles its own clients tru  map<int, Connection*>
 void ServerManager::run()
 {
     std::cout << "Server manager is running..." << std::endl;
@@ -191,7 +168,7 @@ void ServerManager::run()
             {
                 this->servers[targetServer].handleWriteEvent(epollEventsBuffer[i].data.fd);
             }
-           else if (epollEventsBuffer[i].events & EPOLLHUP ||
+            else if (epollEventsBuffer[i].events & EPOLLHUP ||
                 epollEventsBuffer[i].events & EPOLLERR)
             {
                 this->servers[targetServer].handelSocketError(epollEventsBuffer[i].data.fd);

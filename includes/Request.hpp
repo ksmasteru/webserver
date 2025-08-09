@@ -80,6 +80,7 @@ struct requestErrors{
     bool notAllowed;
     bool badRequest;
     bool ContentTooLarge;
+    bool internalServerError;
 };
 
 class  Request{ // read event.
@@ -145,6 +146,7 @@ class  Request{ // read event.
         _requestErrors.notAllowed = false;
         _requestErrors.badRequest = false;
         _requestErrors.ContentTooLarge = false;
+        _requestErrors.internalServerError = false;
         cookiesMap.clear();
         hasMaxBodySize = false;
         maxBodySize = 0;

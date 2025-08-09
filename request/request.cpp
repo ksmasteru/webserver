@@ -90,6 +90,7 @@ Request::Request()
     _requestErrors.badRequest = false;
     _requestErrors.notAllowed = false;
     _requestErrors.ContentTooLarge = false;
+    _requestErrors.internalServerError = false;
     hasMaxBodySize = false;
     maxBodySize = 0;
 }
@@ -603,6 +604,7 @@ bool Request::isvalidUploadPath(std::vector<Location> &_locations)
     std::cout <<  "POST IS NOT ALLOWED FOR ---" << req_path << "---" << std::endl;
     return (false);
 } 
+
 /* this handles the post request Body : uploads the file to server.*/
 void Request::parseRequestBody(char *request, int offset, int readBytes, std::vector<Location> locations)
 {
@@ -620,10 +622,7 @@ void Request::parseRequestBody(char *request, int offset, int readBytes, std::ve
     if (!isValidPostPath(locations))
         throw (405);
     if (!isvalidUploadPath(locations))
-    {
-        // exit (500);
         throw (500);
-    }
     if (!openRequestFile)
         setUpPostFile();
     // here to check for max body size.
@@ -746,7 +745,6 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
 
 void Request::contentLengthBody(char *request, int offset, int readBytes)
 {
-    
     if (this->hasMaxBodySize && maxBodySize > 0)
     {
         if ((this->RequestFile.offset +  readBytes - offset) > maxBodySize)
@@ -767,7 +765,6 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
         throw ("partial/failed write : internal server error");
     }
     this->RequestFile.offset += writtenData;
-    // checck if done.
     if (this->RequestFile.offset == this->RequestFile.size)
     {
         std::cout << "File received completely" << std::endl;
@@ -777,7 +774,6 @@ void Request::contentLengthBody(char *request, int offset, int readBytes)
     }
 }
 
-/*generate a unique fd for post request*/
 // Content-Type: text/html; charset=utf-8
 std::string Request::getExtension()
 {

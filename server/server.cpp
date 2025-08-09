@@ -91,24 +91,15 @@ void Server::handleReadEvent(int fd)
     int readBytes = recv(fd, buffer, BUFFER_SIZE, 0);
     if (readBytes == -1)
     {
-        // close connection here.
         std::cout << "closed connection for read even of fd: " << fd << std::endl;
         removeClient(fd);
         return ;
     }
-  /*  else if (readBytes == 0)
-    {
-        std::cout << "has read 0 bytes!!!"<< "\U0001F600" << std::endl;
-        return ;
-    }*/
     if (readBytes > 0)
     {
         std::cout << "resetting connection timer of " << fd << std::endl;
         this->clients[fd]->resetTime();
     }
-    //std::cout << "Reead bytes are " << readBytes << std::endl;
-
-    // new : this is a wrong approach ; sendinng is up to handleWriteEvent.
     switch (clients[fd]->request.getState())
     {
         case ReadingRequestHeader:
@@ -134,6 +125,9 @@ void Server::handleReadEvent(int fd)
                         break;
                     case 413:
                         clients[fd]->request._requestErrors.ContentTooLarge = true;
+                        break;
+                    case 500:
+                        clients[fd]->request._requestErrors.internalServerError = true;
                         break;
                     default:
                         break; 
@@ -165,6 +159,9 @@ void Server::handleReadEvent(int fd)
                         break;
                     case 413:
                         clients[fd]->request._requestErrors.ContentTooLarge = true;
+                        break;
+                    case 500:
+                        clients[fd]->request._requestErrors.internalServerError = true; 
                         break;
                     default:
                         break; 
@@ -227,7 +224,8 @@ void Server::handleWriteEvent(int fd)
     // attributees of response .
     // habdling bad requests!.
     if (clients[fd]->request._requestErrors.badRequest || 
-        clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed)
+        clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed
+        || clients[fd]->request._requestErrors.internalServerError)
     {
         std::cout << "bad request flag detected" << std::endl;
         try {

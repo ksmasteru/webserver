@@ -896,6 +896,8 @@ void Response::handleBadRequest(int cfd, Request *req)
         ofs << "HTTP/1.1 405 Method Not Allowed \r\n";
     else if (req->_requestErrors.ContentTooLarge)
         ofs << "HTTP/1.1 413 Request Entity Too Large \r\n";
+    else if (req->_requestErrors.internalServerError)
+        ofs << "HTTP/1.1 500 Internal Server Error \r\n";
     ofs << "Server: apache/2.4.41 (mac osx) \r\n"
         << "Content-Length: 0 \r\n"
         << "Connection: close \r\n"
