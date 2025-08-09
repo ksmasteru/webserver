@@ -538,7 +538,7 @@ bool Request::isValidPostPath(std::vector<Location> _locations)
 }
 
 bool Request::isDirectoryWritable(const char* dirPath) {
-    struct stat info;
+     struct stat info;
 
     // Check if directory exists
     if (stat(dirPath, &info) != 0) {
@@ -550,27 +550,26 @@ bool Request::isDirectoryWritable(const char* dirPath) {
         return false;
     }
 
-    // Construct a test file path inside the directory
-    char testFilePath[1024];
-    std::snprintf(testFilePath, sizeof(testFilePath), "%s/temp_write_test.txt", dirPath);
+    // Construct test file path
+    std::string testFilePath = std::string(dirPath) + "/temp_write_test.txt";
 
-    // Try to open the file for writing
-    FILE* file = std::fopen(testFilePath, "w");
-    if (!file) {
+    // Try to open the file for writing (create if not exists, overwrite if exists)
+    int fd = open(testFilePath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    if (fd == -1) {
         return false;
     }
 
     // Write something to the file
     const char* testData = "test";
-    size_t written = std::fwrite(testData, sizeof(char), std::strlen(testData), file);
-    std::fclose(file);
+    ssize_t written = write(fd, testData, std::strlen(testData));
+    close(fd);
 
-    if (written != std::strlen(testData)) {
+    if (written != (ssize_t)std::strlen(testData)) {
         return false;
     }
 
     // Remove the test file
-    if (std::remove(testFilePath) != 0) {
+    if (std::remove(testFilePath.c_str()) != 0) {
         return false;
     }
 

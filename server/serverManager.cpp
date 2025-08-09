@@ -55,14 +55,13 @@ int ServerManager::findServerIndex(std::string host, std::string port, std::vect
     return -1;
 }
 
-// adds socket "sfd" to epoll watch list.
 void ServerManager::addToEpoll(int sfd, int mode)
 {
     struct epoll_event ev;
     ev.events = mode;
     ev.data.fd = sfd;
     if (epoll_ctl(this->epoll_fd, EPOLL_CTL_ADD, sfd, &ev) == -1)
-        throw("Epoll_Ctl failed\n");/*shouldnt be a cancelaton point*/
+        throw("Epoll_Ctl failed\n");
     set_nonblocking(sfd);
 }
 
@@ -83,7 +82,6 @@ void ServerManager::establishServers()
                 if (serverSocket == -1)
                 {
                     continue;
-                    // throw ("Error making passive socket...\n"); /*this shouldnt be a cancelation point?*/
                 }
                 servers[i].serverSockets.push_back(serverSocket); // added easy to manage | each server knows his sockets
                 serverSockets.push_back(serverSocket);
@@ -128,32 +126,22 @@ void ServerManager::run()
     
     while (true)
     {
-        // updated : sets flag on clients that timed out --> response send timeout and detachs;
         closeTimedOutClients();
-        //std::cout << "out loop" << std::endl;
-        int num_events = epoll_wait(this->epoll_fd, this->epollEventsBuffer, MAX_EVENTS, 100); // here it is blocking.
-        // so fllow of exectuion stucks here : i guess it is a bad idea;
-        //std::cout << "number of events is: " << num_events << std::endl;
+        int num_events = epoll_wait(this->epoll_fd, this->epollEventsBuffer, MAX_EVENTS, 100);
         if (num_events == -1)
         {
             std::cout << "errno " << errno << std::endl;
             throw ("epoll_wait error\n");
         }   
-        // one process handles all connection  NO DUPLICATE fds.
         for (int i = 0; i < num_events; i++)
         {
-            //std::cout << "In loop" << std::endl;
-            // check if connection happens on server socket.
             if ((serverIndex = isServerSocket(epollEventsBuffer[i].data.fd)) != -1)
             {
                 std::cout << "ServerIndex : " << serverIndex << "\n";
-                // here we have a problem the connection is in server index 0 but the output shows 2 to address the issue i will edit isServerSocket.
-                // try catch this ?
                 this->servers[serverIndex].addNewClient(this->epoll_fd, epollEventsBuffer[i].data.fd);
                 continue;
             }
-            // determine which server has to handle this
-            if ((targetServer = getTargetServer(epollEventsBuffer[i].data.fd)) == -1) /*how can this fail ?*/
+            if ((targetServer = getTargetServer(epollEventsBuffer[i].data.fd)) == -1)
             {
                 std::cout << "couldnt find a matching client in all servers : ";
                 std::cout << epollEventsBuffer[i].data.fd << std::endl;
