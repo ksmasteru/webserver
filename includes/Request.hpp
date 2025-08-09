@@ -33,14 +33,12 @@ enum mainState{
     ReadingRequestBody,
     Done
 };
-
+//api?user=alice&id=42
 enum subState{
         start = 0,
         method_name,
         after_method_space,
         request_uri,
-        question_mark,
-        query_equal_mark,
         querykey,
         queryValue,
         spaceafterurl,

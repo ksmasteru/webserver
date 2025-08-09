@@ -12,6 +12,7 @@ bool isGetRequest(char *str)
     return (str[0] == 'G' && str[1] == 'E' && str[2] == 'T'
         && str[3] == ' ');
 }
+
 bool isPostRequest(char *str)
 {
     return (str[0] == 'P' && str[1] == 'O' && str[2] == 'S'
@@ -328,7 +329,7 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
                     switch (c)
                     {
                         case '?':
-                            this->SubState = question_mark;
+                            this->SubState = querykey;
                             break;
                         case ' ':
                             this->SubState = spaceafterurl;
@@ -338,53 +339,22 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
                             break;
                     }
                     break;
-                case question_mark: // ?'fdsfds'=fdfsd
+                case querykey: // ?'fdsfds'=fdfsd
                     switch (c)
                     {
                         case '=':
-                            this->SubState = query_equal_mark;
+                            this->SubState = queryValue;
                             break;
                         case ' ':
                             throw("bad request question mark no value\n");
                         case '?':
                             throw("bad request multiple '?'\n");
-                        case '&':
+                        case '&': // weird
                             throw("bad request no key before &\n");
                         default:
                             this->qkey += c;
                             break;
                     }
-                    break;
-                case query_equal_mark:
-                    if (this->qkey.empty())
-                        throw("bad request no query key\n");
-                    if (c < 0x20 || c == 0x7f || c == '?') /*no printib chars*/
-                        throw("bad request uri\n");
-                    if(c == ' ' || c == '&')
-                    {
-                        if (this->qvalue.empty())
-                            throw("bad reqeust query done\n");
-                        this->queries[this->qkey] = this->qvalue;
-                        this->qkey.clear();
-                        this->qvalue.clear();
-                        if (c == ' ')
-                            this->SubState = spaceafterurl;
-                        else
-                            this->SubState = querykey;
-                        break;
-                    }
-                    else
-                        this->qvalue += c;
-                    break;
-                case querykey:
-                    if (c == '&' || c == ' ' || c == '?')
-                        throw("bad request\n");
-                    if (c == '=')
-                    {
-                        this->SubState = queryValue;
-                        break;
-                    }
-                    this->qkey += c;
                     break;
                 case queryValue:
                     if (this->qkey.empty())
@@ -393,15 +363,15 @@ void Request::parseRequestLine(char *request, int readBytes, int &offset)
                         throw("bad request multiple '?'\n");
                     if (c == '&' || c == ' ')
                     {
-                        if (this->qvalue.empty())
-                            throw("bad reqeust query done\n");
+                        if (this->qvalue.empty() || this->qkey.empty())
+                            throw("bad request empty qvalue\n");
                         this->queries[this->qkey] = this->qvalue;
                         this->qkey.clear();
                         this->qvalue.clear();
                         if (c == '&')
                             this->SubState = querykey;
                         else
-                            this->SubState = queryValue;
+                            this->SubState = spaceafterurl;
                         break;
                     }
                     this->qvalue += c;
