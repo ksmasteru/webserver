@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Binary File Upload</title>
+</head>
+<body>
+  <h2>Upload File to 127.0.0.1:8080</h2>
+  <input type="file" id="fileInput" />
+  <button onclick="uploadFile()">Upload</button>
+
+  <script>
+    async function uploadFile() {
+      const input = document.getElementById('fileInput');
+      if (input.files.length === 0) {
+        alert('Please select a file first.');
+        return;
+      }
+
+      const file = input.files[0];
+
+      try {
+        const response = await fetch('http://127.0.0.1:8080', {
+          method: 'POST',
+          body: file,
+          headers: {
+            'Accept': '*/*',
+          },
+        });
+
+        if (response.ok) {
+          alert('File uploaded successfully!');
+        } else {
+          alert('Upload failed. Status: ' + response.status);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('An error occurred during upload.');
+      }
+    }
+  </script>
+</body>
+</html>

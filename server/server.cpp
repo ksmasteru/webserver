@@ -13,30 +13,6 @@ Server::Server()
     //memset(&(this->data),0, sizeof(t_InetData)); //!!
 }
 
-// socket + f
-int Server::establishServer()
-{
-    //struct sockaddr_in server_addr, client_addr;
-    //socklen_t client_len = sizeof(client_addr);
-    data.client_len = sizeof(data.client_addr);
-    data.sfd = makePassiveSocket(&data.server_fd);
-    if (data.sfd == -1)
-        throw ("");
-    data.epollfd = createEpoll(&data.event, data.sfd);
-    if (data.epollfd == -1)
-        throw ("epoll");
-    /*try {
-        loadstatuscodes(STATUS_PATH);
-    }
-    catch (const char* error)
-    {
-        throw (error);
-        exit (1);
-    }
-    this->loadedStatusCodes = true;
-    */return (0);
-}
-
 
 void Server::addNewClient(int epoll_fd, int socket_fd)
 {
@@ -143,15 +119,6 @@ void Server::handleReadEvent(int fd)
             catch (const char *msg)
             {
                 std::cout << "parse request header failed" << std::endl;
-                // here in case of error set response to done with a flag to type of error
-                // to be send by response;
-                
-                // bellow is old code
-                /*std::cout << msg << std::endl;
-                sendBadRequest(fd);
-                removeClient(fd);*/
-                
-                // new code
                 std::cout << msg << std::endl;
                 clients[fd]->request._requestErrors.badRequest = true;
                 clients[fd]->request.MainState = Done;
@@ -219,16 +186,6 @@ void Server::handleReadEvent(int fd)
     }
 }
 
-void Server::sendBadRequest(int fd)
-{
-    std::ostringstream msg;
-
-    msg << "HTTP/1.1 400 Bad Request \r\n"
-        << "\r\n";
-    if (send(fd, msg.str().c_str(), msg.str().length(), MSG_NOSIGNAL) == - 1)
-        throw("send error");        
-}
-
 
 void Server::handleWriteEvent(int fd)
 {
@@ -273,7 +230,6 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed)
     {
         std::cout << "bad request flag detected" << std::endl;
-        exit(1);
         try {
             clients[fd]->response.handleBadRequest(fd, &clients[fd]->request);}
         catch (int n)
@@ -300,10 +256,11 @@ void Server::handleWriteEvent(int fd)
         removeClient(cfd);
         return ;
     }
-    catch (const char *msg) // this should be handled
+    catch (const char *msg)
     {
         std::cout << msg << std::endl;
-        exit(1);
+        removeClient(fd);
+        return ;
     }
     }
     // reset timeout timer
@@ -380,6 +337,7 @@ void Server::unBindTimedOutClients()
             //removeClient(it->first);
             continue;
         }
+
         switch (this->clients[it->first]->request.getState())
         {
             case ReadingRequestHeader:
@@ -596,6 +554,12 @@ int main(int ac, char **av)
         catch (const char *msg)
         {
             std::cerr << msg << std::endl;
+            servManager.closeAllSockets();
+            close(servManager.epoll_fd);
+        }
+        catch (...)
+        {
+            std::cerr << "Config error" << std::endl;
             servManager.closeAllSockets();
             close(servManager.epoll_fd);
         }

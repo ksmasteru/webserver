@@ -72,7 +72,6 @@ class Server{
         void handelSocketError(int);
         char *getRequest(int client_fd);
         void parseRequest(const std::string& request, std::map<int, std::string>& map);
-        void sendBadRequest(int);
         bool clientWasRemoved(int);
         bool clientExist(int);
         void notAllowedPostResponse(int cfd);

@@ -1,4 +1,4 @@
-// flags done : execept c++98 for addCookiesHeader.
+// flags done : except c++98 for addCookiesHeader.
 #include "../includes/Response.hpp"
 #include "../includes/cgiHandler.hpp"
 #include <fstream>
@@ -124,7 +124,7 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Transfer-Encoding: chunked \r\n"
             << "Connection: " + alive + " \r\n";
     }
-    addCookiesHeader(header);
+    //addCookiesHeader(header);
     header << "\r\n";
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
@@ -186,13 +186,6 @@ void Response::sendHeader(const char *path, int cfd, bool redirection)
     this->state = sendingBody;
 }
 
-void Response::getFileReady(int fd)
-{
-    off_t new_offset = lseek(fd, fileOffset, SEEK_SET);
-    if (new_offset == -1)
-        throw ("bad file seek");
-}
-
 void Response::sendChunkHeader (int cfd, int readBytes)
 {
     std::stringstream ss;
@@ -215,7 +208,7 @@ int Response::getFd(const char *path)
         return fd;
     this->fd = open(path, O_RDONLY);
     if (this->fd == -1)
-        throw ("couldnt open file");
+        return -1;
     openfile = true;
     return this->fd;
 }
@@ -236,13 +229,13 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     }
     int R_BUFF = BUFFER_SIZE - sentBytes;
     if (R_BUFF < 2)
-        throw ("too long of a header?");
+        throw (cfd);
     int fd = getFd(path);
     char* buffer[R_BUFF];
     //getFileReady(fd);
     int readbytes = read(fd, buffer, R_BUFF);
     if (readbytes < 0)
-        throw ("read fail");
+        throw (cfd);
     //std::cout <<  "readbytes are " << readbytes << std::endl;
     if (chunked)
         sendChunkHeader(cfd, readbytes);
@@ -252,7 +245,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
         close (fd);
         openfile = false;
         this->state = ResponseDone;
-        throw ("send fail 1");
+        throw (cfd);
     }
     fileOffset += sent;
     if (chunked)
@@ -289,14 +282,14 @@ void Response::sendNotFoundPage(const char* path, int cfd, bool redir)
     char *buffer[R_BUFF];
     int readBytes = read(fd, buffer, R_BUFF);
     if (readBytes < 0)
-        throw ("read fail");
+        throw (cfd);
     std::cout <<  "readbytes are " << readBytes << std::endl;
     int sent = send(cfd,  buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
     {
         close (fd);
         openfile = false;
-        throw ("send fail 1");
+        throw (cfd);
     }
     close(fd);
     this->state = ResponseDone;
@@ -501,13 +494,6 @@ void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
     if (this->settings.DELETE)
         allowedMethods += "DELETE";
     std::ostringstream msg;
-    /*
-    HTTP/1.1 405 Method Not Allowed
-    Content-Length: 0
-    Date: Fri, 28 Jun 2024 14:30:31 GMT
-    Server: ECLF (nyd/D179)
-    Allow: GET, POST, HEAD
-    */
     msg << "HTTP/1.1 405 Method Not Allowed \r\n"
         << "Date: " + getTime() + " \r\n"
         << "Server: apache/2.4.41 (mac osx) \r\n"
@@ -526,54 +512,9 @@ void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
 
 void Response::notFoundResponsePage(std::map<int, std::string>& errorPages)
 {
-    // EACH  CONFIG file should have a not found page.
-    // handle if an errorpage wasnt assigned in the config file
-    // if (errorPages.find(404) == errorPages.end())
     std::string pagePath = errorPages[404];
-    // redirection set to true;
 }
 
-// change name to forbidenResponsePage. // should be a general errorPage.
-/*void Response::accessDeniedResponsePage(std::map<int, std::string>& errorPages)
-{
-    std::cout << "Access denied response page called" << std::endl;
-    std::string path;
-    std::map<int, std::string>::iterator it;
-    it = errorPages.find(403);
-    if (it != errorPages.end())
-    {
-        path = errorPages[403];
-        if (access(path.c_str(), F_OK) == -1 || access(path.c_str(), R_OK) == -1)
-            path = "./pages.403.html";
-    }
-    else
-        path = "./pages/403.html";
-    sendHeader(path, cfd, true);
-    int R_BUFF = this->res_data.clength;
-    int fd =  getFd(path.c_str());
-    char *buffer[R_BUFF];
-    int readBytes = read(fd, buffer, R_BUFF);
-    if (readBytes < 0)
-        throw ("read fail");
-    std::cout <<  "readbytes are " << readBytes << std::endl;
-    int sent = send(cfd,  buffer, readBytes, MSG_NOSIGNAL);
-    if (sent != readBytes)
-    {
-        close (fd);
-        openfile = false;
-        this->state = ResponseDone;
-        throw ("send fail 1");
-    }
-    close(fd);
-    this->state = ResponseDone;
-}*/
-
-// static std::string intToString(int value)
-// {
-//     std::ostringstream oss;
-//     oss << value;
-//     return oss.str();
-// }
 
 void sendSimpleErrorPage(int cfd, int errorCode)
 {
@@ -666,11 +607,17 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
     // }
     sendHeader(path.c_str(), cfd, true);
     int R_BUFF = this->res_data.clength;
-    int fd = getFd(path.c_str());
+    int fd;
+    fd = getFd(path.c_str());
+    if (fd == -1)
+    {
+        std::cout << "couldnt open requested page " << path << std::endl;
+        throw (cfd);
+    }
     char *buffer[R_BUFF];
     int readBytes = read(fd, buffer, R_BUFF);
     if (readBytes < 0)
-        throw ("read fail");
+        throw (cfd);
     std::cout << "readBytes are " << readBytes << std::endl;
     int sent = send(cfd, buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
@@ -763,12 +710,16 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
                 << "Content-Length: "
                 << longlongToString(body.length()) + "\r\n"
                                                 << "Connection: close\r\n";
-                addCookiesHeader(header);
+                //addCookiesHeader(header);
             header << "\r\n";
             std::string response = header.str() + body;
             // Send the response to the client
-            send(cfd, response.c_str(), response.length(), 0);
-            close(cfd);
+            
+            if (send(cfd, response.c_str(), response.length(), MSG_NOSIGNAL) == -1)
+            {
+                close(cfd);
+                throw(cfd);
+            }
             this->res_data.status = 504;
             this->resetCgiData();
             return;
@@ -908,7 +859,6 @@ void Response::makeResponse(int cfd, Request* req, std::map<int, std::string> &e
             return (DirectoryListing(cfd, this->filePath, errorPages));
         if (!this->settings.GET)
         {
-
             return errorResponsePage(cfd, errorPages, 405);
             // return (notAllowedGetResponse(cfd));
         }
@@ -941,22 +891,15 @@ void Response::handleBadRequest(int cfd, Request *req)
 {
     std::ostringstream ofs;
     if (req->_requestErrors.badRequest)
-    {
-        ofs << "HTTP/1.1 400 Bad Request \r\n"
-            << "\r\n";
-    }
+        ofs << "HTTP/1.1 400 Bad Request \r\n";
     else if (req->_requestErrors.notAllowed)
-    {
-        ofs << "HTTP/1.1 405 Method Not Allowed \r\n"
-            << "Server: apache/2.4.41 (mac osx) \r\n"
-            << "Content-Length: 0 \r\n"
-            << "\r\n";
-    }
+        ofs << "HTTP/1.1 405 Method Not Allowed \r\n";
     else if (req->_requestErrors.ContentTooLarge)
-    {
-        ofs << "HTTP/1.1 413 Request Entity Too Large \r\n"
-            << "\r\n";
-    }
+        ofs << "HTTP/1.1 413 Request Entity Too Large \r\n";
+    ofs << "Server: apache/2.4.41 (mac osx) \r\n"
+        << "Content-Length: 0 \r\n"
+        << "Connection: close \r\n"
+        << "\r\n";
     std::string resp = ofs.str();
     if (send(cfd, resp.c_str(), resp.length(), MSG_NOSIGNAL) == -1)
     {
@@ -971,12 +914,13 @@ void Response::successPostResponse(int cfd)
 {
     std::ostringstream ofs;
     ofs << "HTTP/1.1 201 Created \r\n";
-    addCookiesHeader(ofs);
+    //addCookiesHeader(ofs);
     ofs << "Connection: Close \r\n"
+        << "Content-length: 0 \r\n"
         << "\r\n";
     std::string header = ofs.str();
     if (send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL) == -1)
-        throw ("error sending post Response");
+        throw (cfd);
     std::cout << "sent post response" << header <<std::endl;
     this->state = ResponseDone;
 }
@@ -1027,6 +971,8 @@ void Response::deleteResponse(int cfd, Request* req)
     {
         case 204:
             ofs << "HTTP/1.1 204 No Content \r\n"
+                << "Connection: Close \r\n"
+                << "Content-length: 0 \r\n"
                 << "Date: " + getTime() + " \r\n"
                 << "\r\n";
             if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
@@ -1034,6 +980,8 @@ void Response::deleteResponse(int cfd, Request* req)
             break;
         case 403:
             ofs << "HTTP/1.1 403 Forbidden \r\n"
+                << "Connection: Close \r\n"
+                << "Content-length: 0 \r\n"
                 << "Date: " + getTime() + " \r\n"
                 << "\r\n";
             if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
@@ -1041,6 +989,8 @@ void Response::deleteResponse(int cfd, Request* req)
             break;
         case 404:
             ofs << "HTTP/1.1 404 Not Found \r\n"
+                << "Connection: Close \r\n"
+                << "Content-length: 0 \r\n"
                 << "Date: " + getTime() + " \r\n" // needs additional \r\n ?
                 << "\r\n";
             if (send(cfd, ofs.str().c_str(), ofs.str().length(), MSG_NOSIGNAL) == -1)
@@ -1054,19 +1004,19 @@ void Response::deleteResponse(int cfd, Request* req)
 
 void Response::sendTimedOutResponse(int cfd, Request* req)
 {
+    (void) req;
     std::ostringstream ofs;
     ofs << "HTTP/1.1 408 Request Timeout\r\n";
-    if (req->getState() != 0)
-        addCookiesHeader(ofs);
+    /*if (req->getState() != 0)
+        addCookiesHeader(ofs);*/
     ofs << "Content-Length: 0\r\n"
+        << "Connection: close \r\n"    
         << "\r\n";
     std::string msg = ofs.str();
     if (send(cfd, msg.c_str(), msg.length() , MSG_NOSIGNAL) == -1)
         throw (cfd);
     this->state = ResponseDone;
 }
-
-
 
 // code for cgi response
 
@@ -1206,7 +1156,7 @@ std::string Response::buildCgiResponse()
     } else {
         response_stream << "Connection: close\r\n";
     }
-    addCookiesHeader(response_stream);
+    //addCookiesHeader(response_stream);
     response_stream << "\r\n"; 
     response_stream << cgi_body;
     return response_stream.str();

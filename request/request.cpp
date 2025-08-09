@@ -731,25 +731,6 @@ std::string Request::getExtension()
  // deprecated:
 int Request::getPostFd()
 {
-    /*
-    if (this->openPostfd)
-        return (this->Postfd);
-    std::string fileName = generateUniqueFilename();
-    fileName += getExtension();
-    std::cout << "filename for upload ist " << fileName << std::endl;
-    try {
-    this->Postfd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
-    if (this->Postfd == -1)
-        throw ("couldnt open post fd");
-    }
-    catch (const char* msg)
-    {
-        std::cout << msg << std::endl;
-        exit(1);
-    }
-    this->openPostfd = true;
-    return this->Postfd;
-    */
     return (this->RequestFile.fd);
 }
 // to avoid copying the map each time. 
