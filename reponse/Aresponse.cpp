@@ -2,7 +2,7 @@
 
 AResponse::AResponse(std::string type, Request* req, std::map<std::string, std::string>* status, int client_fd) :_type(type), _request(req), resp_msg(NULL), statuscodes(status)
     , _client_fd(client_fd){
-    std::cout << "AResponse constructor called" << std::endl;
+    //std::cout << "AResponse constructor called" << std::endl;
     this->statuscodes = new std::map<std::string, std::string>();
     this->statuscodes->insert(std::make_pair("200", "OK"));
     this->statuscodes->insert(std::make_pair("404", "Not Found"));

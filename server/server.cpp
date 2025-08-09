@@ -16,8 +16,8 @@ Server::Server()
 
 void Server::addNewClient(int epoll_fd, int socket_fd)
 {
-    std::cout <<  "epollfd: " << epoll_fd;
-    std::cout << " socket_fd "  << socket_fd << std::endl;
+    //std::cout <<  "epollfd: " << epoll_fd;
+    //std::cout << " socket_fd "  << socket_fd << std::endl;
     int client_fd = accept(socket_fd, NULL, 0);
     // accept gives increasign values.
     if (client_fd == -1)
@@ -80,10 +80,10 @@ void Server::notAllowedPostResponse(int cfd)
 }
 void Server::handleReadEvent(int fd)
 {
-    std::cout << "new read event for fd " << fd << std::endl;
+    //std::cout << "new read event for fd " << fd << std::endl;
     if (clients.find(fd) == clients.end())
     {
-        std::cout << "client of fd: " << fd << " was not found" << std::endl;
+        //std::cout << "client of fd: " << fd << " was not found" << std::endl;
         return ;
     }
     char buffer[BUFFER_SIZE];
@@ -97,7 +97,7 @@ void Server::handleReadEvent(int fd)
     }
     if (readBytes > 0)
     {
-        std::cout << "resetting connection timer of " << fd << std::endl;
+        //std::cout << "resetting connection timer of " << fd << std::endl;
         this->clients[fd]->resetTime();
     }
     switch (clients[fd]->request.getState())
@@ -109,14 +109,14 @@ void Server::handleReadEvent(int fd)
             }
             catch (const char *msg)
             {
-                std::cout << "parse request header failed" << std::endl;
+                //std::cout << "parse request header failed" << std::endl;
                 std::cout << msg << std::endl;
                 clients[fd]->request._requestErrors.badRequest = true;
                 clients[fd]->request.MainState = Done;
             }
             catch (int n)
             {
-                std::cout << "caught exeception code : " << n << std::endl;
+                //std::cout << "caught exeception code : " << n << std::endl;
                 clients[fd]->request.MainState = Done;
                 switch (n)
                 {
@@ -169,16 +169,16 @@ void Server::handleReadEvent(int fd)
             }
             break;
         default:
-            std::cout << "waiting for the response to finish" << std::endl; // ??
+            //std::cout << "waiting for the response to finish" << std::endl; // ??
             break;
     }
     // check if client still exist it might be deleted due to bad to request.
     
     if (clients[fd]->request.getState() == Done)/*!!!!!!!!!!new code*/
     {
-        std::cout << "read event handled successfuly for target url " << clients[fd]->request.getRequestPath() << std::endl;
+        //std::cout << "read event handled successfuly for target url " << clients[fd]->request.getRequestPath() << std::endl;
         // now open write mode acces for epoll.
-        std::cout << "opened write permissions for fd: " << fd << std::endl;
+        //std::cout << "opened write permissions for fd: " << fd << std::endl;
         giveWritePermissions(fd);
     }
 }
@@ -190,23 +190,23 @@ void Server::handleWriteEvent(int fd)
     // minium write operation should cover the header.
     if (clients.find(fd) == clients.end())
     {
-        std::cout << "client not found " << std::endl;
+        //std::cout << "client not found " << std::endl;
         return ;
     }
     else if (this->clients[fd]->_timeOut)
     {
-        std::cout << "handle write event has detected a timeout on client : " << fd << std::endl;
+        //std::cout << "handle write event has detected a timeout on client : " << fd << std::endl;
         // new : for post if file didnt finish sending close it.
         if (clients[fd]->request.openRequestFile)
         {
-            std::cout << "... closing post request file" << std::endl;
+            //std::cout << "... closing post request file" << std::endl;
             // delete incomplete file.
             close(clients[fd]->request.RequestFile.fd);
             
-            int a = unlink(clients[fd]->request.RequestFile.fileName.c_str());
-            std::cout << "unlink status " << a << " for : " << clients[fd]->request.RequestFile.fileName << std::endl;
+            unlink(clients[fd]->request.RequestFile.fileName.c_str());
+            //std::cout << "unlink status " << a << " for : " << clients[fd]->request.RequestFile.fileName << std::endl;
         }
-        std::cout << "request state " << clients[fd]->request.getState() << std::endl;
+        //std::cout << "request state " << clients[fd]->request.getState() << std::endl;
         this->clients[fd]->response.sendTimedOutResponse(fd, &clients[fd]->request);
         // close connection;
         removeClient(fd);
@@ -227,12 +227,12 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed
         || clients[fd]->request._requestErrors.internalServerError)
     {
-        std::cout << "bad request flag detected" << std::endl;
+        //std::cout << "bad request flag detected" << std::endl;
         try {
             clients[fd]->response.handleBadRequest(fd, &clients[fd]->request);}
         catch (int n)
         {
-            std::cout << "handling connection failureo on " << n << std::endl;
+            //std::cout << "handling connection failureo on " << n << std::endl;
             removeClient(fd);
         }
         return ;
@@ -272,7 +272,7 @@ void Server::handleWriteEvent(int fd)
         else /*revoke write permission*/
         {
             // just reset everything.
-            std::cout << "resetting request and response of client : " << fd << std::endl;
+            //std::cout << "resetting request and response of client : " << fd << std::endl;
             clients[fd]->request.reset();
             clients[fd]->response.reset();
             // block write?
@@ -284,7 +284,7 @@ void Server::handelSocketError(int fd)
 {
     if (clients.find(fd) == clients.end())
     {
-        std::cout << "client not found " << std::endl;
+        //std::cout << "client not found " << std::endl;
         return ;
     }
     std::cout << "------ERROR EVENT ON " << fd << std::endl;
@@ -296,7 +296,7 @@ void Server::giveWritePermissions(int fd)
 {
     if (!this->clients[fd]->_writeMode)
     {
-        std::cout << "Giving write permissions for socket of client " << fd << std::endl;
+        //std::cout << "Giving write permissions for socket of client " << fd << std::endl;
         struct epoll_event event;
         event.events = EPOLLOUT | EPOLLERR;
         event.data.fd = fd;
@@ -330,7 +330,7 @@ void Server::unBindTimedOutClients()
             //this->clients[it->first]->request.MainState = Done;
             this->clients[it->first]->_timeOut = true;
             giveWritePermissions(it->first);
-            std::cout << "Timeout of total connection" << std::endl;
+            //std::cout << "Timeout of total connection" << std::endl;
             // new code : we set a flag that determines if a timeout happened -> send timeout response.
             //removeClient(it->first);
             continue;
@@ -344,18 +344,18 @@ void Server::unBindTimedOutClients()
                     giveWritePermissions(it->first);
                     //this->clients[it->first]->request.MainState = Done;
                     this->clients[it->first]->_timeOut = true;
-                    std::cout << "client of fd: " << it->first << " has timedOut : HEADER" << std::endl;
+                    //std::cout << "client of fd: " << it->first << " has timedOut : HEADER" << std::endl;
                     //removeClient(it->first);
                 }
                 break;
             case ReadingRequestBody:
-                std::cout << "timeout case request Body" << std::endl;
+                //std::cout << "timeout case request Body" << std::endl;
                 if ((curTime.tv_sec - it->second->getTime().tv_sec) >= BODY_TIMEOUT)
                 {
                     //this->clients[it->first]->request.MainState = Done;
                     this->clients[it->first]->_timeOut = true;
                     giveWritePermissions(it->first);
-                    std::cout << "client of fd: " << it->first << " has timedOut : BODY" << std::endl;
+                    //std::cout << "client of fd: " << it->first << " has timedOut : BODY" << std::endl;
                     // should send a timeout so remove client would be a flag ? when sending a response. ?
                     //removeClient(it->first);
                 }
@@ -378,7 +378,7 @@ bool Server::clientWasRemoved(int toFind)
         if (toFind == it->first)
              return (false);
     }
-    std::cout << "----------client was removed previously------------" << std::endl;
+    //std::cout << "----------client was removed previously------------" << std::endl;
     return (true);
 }
 
@@ -401,7 +401,7 @@ void Server::loadstatuscodes(const char* filepath)
     ifs.open(filepath);
     if (!ifs)
     {
-        std::cerr << "couln't load status codes file " << filepath<< std::endl; 
+        //std::cerr << "couln't load status codes file " << filepath<< std::endl; 
         return ;
     }
     std::string line;
@@ -498,7 +498,7 @@ bool isValidConfigFile(int ac, char **av)
     if (ac != 2)
         return (false);
     std::string filename = av[1];
-    std::cout << "filename ist " << filename << std::endl;
+    //std::cout << "filename ist " << filename << std::endl;
     size_t dot = filename.rfind('.');
     if (dot == std::string::npos)
         return (false);

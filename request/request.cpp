@@ -42,7 +42,7 @@ void Request::setConnectionType()
     {
         if (it->second.compare("keep-alive") == 0)
         {
-            std::cout << "found keep-alive" << std::endl;
+            //std::cout << "found keep-alive" << std::endl;
             this->keep_alive = true;
         }
     }
@@ -104,17 +104,6 @@ const std::string&   Request::getType() const{
     return (this->type);
 }
 
-void Request::printRequestLine()
-{
-    std::cout << "method type " << this->getType() << std::endl; 
-    std::cout << "Request Uri " << this->targetUri << std::endl;     
-}
-/*
-void Request::printHeaderFields()
-{
-    for (auto it = headers.begin(); it != headers.end(); ++it)
-        std::cout << it->first << ": " << it->second << std::endl;
-}*/
 bool unvalidheaderVal(std::string& val)
 {
     size_t i = val.length() - 1;
@@ -149,7 +138,6 @@ void Request::parseRequestHeader(char* request, int readBytes, std::vector<Locat
             throw (msg); // eh ?
         }
     }
-    std::cout << "after parsing request line offset is "<< offset << " susbstate " << SubState << std::endl;
     for (; offset < _bytesread; offset++)
     {
         c = request[offset];
@@ -215,7 +203,6 @@ void Request::parseRequestHeader(char* request, int readBytes, std::vector<Locat
                     // in this case we move to body parsing.
                     this->MainState = ReadingRequestBody;
                     offset++;
-                    std::cout << "parsing request body called from header" << std::endl;
                     //changed below code to handle valid path for post
                     try
                     {
@@ -444,11 +431,11 @@ void Request::setUpPostFile()
     //std::string extension = getExtension();
     fileName += getExtension();
     this->RequestFile.fileName = fileName;
-    std::cout << "filename for upload ist " << fileName << std::endl;
+    //std::cout << "filename for upload ist " << fileName << std::endl;
     this->RequestFile.fd = open(fileName.c_str(), O_RDWR | O_CREAT | O_TRUNC, 0644);
     if (this->RequestFile.fd == -1)/*should throw an error : stop request.*/
     {
-        std::cout << "errno code: " << errno << std::endl;
+        //std::cout << "errno code: " << errno << std::endl;
         throw ("couldnt open post fd"); // why ?
     }
     this->RequestFile.offset = 0;
@@ -479,25 +466,25 @@ void Request::setUpPostFile()
         this->RequestFile.state = chunk_size;
     }
     this->openRequestFile = true;
-    std::cout << "Post file " << fileName << " has been set up succesfuly" << std::endl;
+    //std::cout << "Post file " << fileName << " has been set up succesfuly" << std::endl;
 }
 
 // check if post path exists and allows POST request.
 bool Request::isValidPostPath(std::vector<Location> _locations)
 {
     std::string req_path = getRequestPath();
-    std::cout << "post request path is " << req_path << std::endl;
+    //std::cout << "post request path is " << req_path << std::endl;
     for (size_t i = 0; i < _locations.size(); i++)
     {
         if (req_path == _locations[i].getPath())
         {
-            std::cout << "req_path is : " << req_path << std::endl;
+            //std::cout << "req_path is : " << req_path << std::endl;
             std::vector<std::string> allowed = _locations[i].getAllowedMethods();
             for (size_t i = 0; i < allowed.size(); i++)
             {
                 if (allowed[i] == "POST")
                 {
-                    std::cout << "POST IS ALLOWED" << std::endl;
+                    //std::cout << "POST IS ALLOWED" << std::endl;
                     return(true);
                 }
             }
@@ -549,22 +536,22 @@ bool Request::isDirectoryWritable(const char* dirPath) {
 bool Request::isvalidUploadPath(std::vector<Location> &_locations)
 {
     std::string req_path = getRequestPath();
-    std::cout << "post request path is " << req_path << std::endl;
+   // std::cout << "post request path is " << req_path << std::endl;
     for (size_t i = 0; i < _locations.size(); i++)
     {
         if (req_path == _locations[i].getPath())
         {
             this->RequestFile.uploadPath = _locations[i].getUploadPath();
-            std::cout << "req_path is : " << req_path << std::endl;
+            //std::cout << "req_path is : " << req_path << std::endl;
             std::vector<std::string> allowed = _locations[i].getAllowedMethods();
             for (size_t i = 0; i < allowed.size(); i++)
             {
                 if (allowed[i] == "POST")
                 {
-                    std::cout << "_locations[i].getUploadPath() : " << this->RequestFile.uploadPath << "\n";
+                    //std::cout << "_locations[i].getUploadPath() : " << this->RequestFile.uploadPath << "\n";
                     if (!isDirectoryWritable(this->RequestFile.uploadPath.c_str()))
                         return (false);
-                    std::cout << "POST IS ALLOWED" << std::endl;
+                    //std::cout << "POST IS ALLOWED" << std::endl;
                     return(true);
                 }
             }
@@ -577,7 +564,7 @@ bool Request::isvalidUploadPath(std::vector<Location> &_locations)
 /* this handles the post request Body : uploads the file to server.*/
 void Request::parseRequestBody(char *request, int offset, int readBytes, std::vector<Location> locations)
 {
-    std::cout << "parseRequestBody called" << std::endl;
+    //std::cout << "parseRequestBody called" << std::endl;
     // if request type is not post ignore
     if (this->getType().compare("POST") != 0)
     {
@@ -598,11 +585,11 @@ void Request::parseRequestBody(char *request, int offset, int readBytes, std::ve
     switch(this->RequestFile.type)
     {
         case Content_Length:
-            std::cout << "parsing method Content-lengh" << std::endl;
+            //std::cout << "parsing method Content-lengh" << std::endl;
             contentLengthBody(request, offset, readBytes);
             break;
         case Chunked:
-            std::cout << "parsing method chunked " << std::endl;
+            //std::cout << "parsing method chunked " << std::endl;
             chunkedBody(request, offset, readBytes);
             break;
         default:
@@ -647,7 +634,7 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                     throw ("bad chunked encoding empty size");
                 if ((this->RequestFile.toWrite = hexStringToLong(this->RequestFile.chunk_lent)) == 0)
                 {
-                    std::cout << "chuck size is " << this->RequestFile.toWrite << std::endl;
+                    //std::cout << "chuck size is " << this->RequestFile.toWrite << std::endl;
                     this->RequestFile.state = CR3;
                     break;
                 }
@@ -701,7 +688,7 @@ void Request::chunkedBody(char *request, int offset, int readBytes)
                 this->openRequestFile = false;
                 break;
             case chunk_done:
-                std::cout << "chunk transfer is done ignoring the remaining data" << std::endl;
+                //std::cout << "chunk transfer is done ignoring the remaining data" << std::endl;
                 this->RequestFile.state = chunk_done;
                 this->MainState = Done;
                 this->SubState = doneParsing;
@@ -840,3 +827,33 @@ std::string Request::generateUniqueFilename() {
     return filename;
 }
 
+void Request::reset()
+{
+        std::cout << "reset request ..." << std::endl;
+        RawRequest.clear();
+        type.clear();
+        qkey.clear();
+        headers.clear();
+        qvalue.clear();
+        RequestFile.fileName.clear();
+        RequestFile.uploadPath.clear();
+        RequestFile.offset = 0;
+        MainState = ReadingRequestHeader;
+        SubState = start;
+        totalReadBytes = 0;
+        _bytesread = 0;
+        openRequestFile = false;
+        RequestFile.fd = -1; 
+        _requestErrors.notAllowed = false;
+        _requestErrors.badRequest = false;
+        _requestErrors.ContentTooLarge = false;
+        _requestErrors.internalServerError = false;
+        cookiesMap.clear();
+        hasMaxBodySize = false;
+        maxBodySize = 0;
+}
+
+int Request::getState()
+{
+    return (this->MainState);
+}

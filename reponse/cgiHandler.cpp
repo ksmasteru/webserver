@@ -37,7 +37,7 @@ void Cgi::handle_timeout(int)
 
 void Cgi::load_into_envp()
 {
-    std::cout << "content type this is  " << this->res->getResData().contentType << std::endl;
+    //std::cout << "content type this is  " << this->res->getResData().contentType << std::endl;
 
     std::vector<std::string> envs;
     envs.push_back("REQUEST_METHOD=" + req->getType());
@@ -60,7 +60,7 @@ void Cgi::load_into_envp()
         }
     }
     
-    std::cout << "parsed query: " << query << std::endl;
+    //std::cout << "parsed query: " << query << std::endl;
         
     envs.push_back("QUERY_STRING=" + query);
     envs.push_back("SCRIPT_NAME=" + path);

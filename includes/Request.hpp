@@ -13,20 +13,10 @@ enum Chunk_State{
     LF1,
     chunk_data,
     CR2,
-    //write_chunk, // next time you write credit.
     CR3,
     LF3,
     chunk_done
 };
-
-    /*
-        7\r\n
-        Mozilla\r\n
-        11\r\n
-        Developer Network\r\n
-        0\r\n
-        \r\n
-    */
 
 enum mainState{
     ReadingRequestHeader,
@@ -125,33 +115,8 @@ class  Request{ // read event.
     void printHeaderFields();
     void setConnectionType();
     bool isAlive();
-    void reset(){
-        std::cout << "reset request ..." << std::endl;
-        RawRequest.clear();
-        type.clear();
-        qkey.clear();
-        headers.clear();
-        qvalue.clear();
-        RequestFile.fileName.clear();
-        RequestFile.uploadPath.clear();
-        RequestFile.offset = 0;
-        MainState = ReadingRequestHeader;
-        SubState = start;
-        totalReadBytes = 0;
-        _bytesread = 0;
-        openRequestFile = false;
-        RequestFile.fd = -1; 
-        _requestErrors.notAllowed = false;
-        _requestErrors.badRequest = false;
-        _requestErrors.ContentTooLarge = false;
-        _requestErrors.internalServerError = false;
-        cookiesMap.clear();
-        hasMaxBodySize = false;
-        maxBodySize = 0;
-    }
-    int getState(){
-        return this->MainState;
-    }
+    void reset();
+    int getState();
     void    contentLengthBody(char *request, int offset, int readBytes);
     void    chunkedBody(char *, int, int);
     int     getPostFd();

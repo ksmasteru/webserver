@@ -161,7 +161,7 @@ void Response::sendHeader(const char *path, int cfd, bool redirection)
     else
         this->res_data.extension = (extension_pos != std::string::npos) ? pathStr.substr(extension_pos+1) : "";
     this->res_data.contentType = content(this->res_data.extension);
-    std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
+    //std::cout << "for path " << path << " content type is " << this->res_data.contentType << " extension is " << this->res_data.extension << std::endl;
     struct stat st;
     stat(path ,&st);
     this->res_data.clength = st.st_size; // ! overflow
@@ -197,7 +197,7 @@ void Response::sendChunkHeader (int cfd, int readBytes)
         close (this->fd);
         openfile = false;
         this->state = ResponseDone;
-        std::cout << "closing connection on socket " << cfd << std::endl;
+        //std::cout << "closing connection on socket " << cfd << std::endl;
         throw (cfd);
     }
 }
@@ -220,7 +220,7 @@ void Response::sendPage(const char *path, int cfd, bool redirection)
     // you could at the start open the file and keep it open
     // this way you dont have to lseek or multiple open close.
     // you only close after timeout or response all sent.
-    std::cout << "send page is called with path " << path << std::endl;
+    //std::cout << "send page is called with path " << path << std::endl;
     sentBytes = 0;
     if (this->getState() == sendingheader)
     {
@@ -273,7 +273,7 @@ will result  in a sigpipe sending the error page
 in one send and thus setting response status to Done*/
 void Response::sendNotFoundPage(const char* path, int cfd, bool redir)
 {
-    std::cout << "sending not found page" << std::endl;
+    //std::cout << "sending not found page" << std::endl;
     // try sending header then send body.
     // if it doesnt work send both header and body in one.
     sendHeader(path, cfd, redir);
@@ -283,7 +283,7 @@ void Response::sendNotFoundPage(const char* path, int cfd, bool redir)
     int readBytes = read(fd, buffer, R_BUFF);
     if (readBytes < 0)
         throw (cfd);
-    std::cout <<  "readbytes are " << readBytes << std::endl;
+    //std::cout <<  "readbytes are " << readBytes << std::endl;
     int sent = send(cfd,  buffer, readBytes, MSG_NOSIGNAL);
     if (sent != readBytes)
     {
@@ -331,7 +331,7 @@ std::string getFileName(std::string path, std::string folderName)
 {
     if (folderName == path || folderName + "/" == path)
     {
-        std::cout << "file name is empty first condition" << std::endl;
+        //std::cout << "file name is empty first condition" << std::endl;
         return ("");
     }
     return (path.substr(folderName.size()));
@@ -363,37 +363,37 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
 {
     this->path_set = true;
     this->res_data.status = 200; // initial;
-    std::cout << "provided path is " << path << std::endl;
+    //std::cout << "provided path is " << path << std::endl;
     std::string folderName = getFolderName(path);
-    std::cout << "folderName is : " << folderName << std::endl;
+    //std::cout << "folderName is : " << folderName << std::endl;
     std::string fileName = getFileName(path, folderName);
-    std::cout << "filename is : " << fileName << std::endl;
+    //std::cout << "filename is : " << fileName << std::endl;
     std::map<int, std::string>::iterator it;
     if (path != "/")
     {
         for (size_t i = 0; i < locations.size(); i++)
         {
-            std::cout << "location[i] path is : " << locations[i].getPath() << std::endl;
+            //std::cout << "location[i] path is : " << locations[i].getPath() << std::endl;
             if (locations[i].getPath() != "/" && locations[i].getPath() + "/" == path)
             {
                 // new check if is a redirection.
                 if (locations[i].redirectBlock)
                 {
-                    std::cout << "---- redirect block detected in first condition ----" << std::endl; 
+                    //std::cout << "---- redirect block detected in first condition ----" << std::endl; 
                     it = locations[i].redirections.begin();
-                    std::cout << "--- redirecting to " << (it)->second << std::endl;
+                    //std::cout << "--- redirecting to " << (it)->second << std::endl;
                     this->settings.redirected = true;
                     //exit(1);
                     return (it->second);
                 }
-                std::cout << "First condition" << std::endl;
-                std::cout << "to return " << locations[i].getIndex() << std::endl;
+                //std::cout << "First condition" << std::endl;
+                //std::cout << "to return " << locations[i].getIndex() << std::endl;
                 setResponseSettings(locations[i], i, true);
                 if (this->settings.indexFile)/*priority of index file 8/8*/
                     this->settings.autoIndexed = false;
                 if (this->settings.autoIndexed)
                 {
-                    std::cout << "auto index detected ..." << std::endl;
+                    //std::cout << "auto index detected ..." << std::endl;
                     //std::cout << "todo directory listing " << locations[i].getRoot() << std::endl;
                     //exit(1);
                     return (locations[i].getRoot());
@@ -404,16 +404,16 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             {
                 if (locations[i].redirectBlock)
                 {
-                    std::cout << "--- redirect block detected in second condition---" << std::endl;
+                    //std::cout << "--- redirect block detected in second condition---" << std::endl;
                     it = locations[i].redirections.begin();
-                    std::cout << "--- redirecting to " << it->second << std::endl; // wrong.
+                    //std::cout << "--- redirecting to " << it->second << std::endl; // wrong.
                     //std::cout << "--- redirecting to " << (it)->second << std::endl; // wrong.
                     //exit(1);
                     this->settings.redirected = true;
                     return (it->second);
                 }
-                std::cout << "to return : " << locations[i].getPath() + "/" << std::endl;
-                std::cout << "Second condition : redirection" << std::endl;
+                //std::cout << "to return : " << locations[i].getPath() + "/" << std::endl;
+                //std::cout << "Second condition : redirection" << std::endl;
                 setResponseSettings(locations[i], i, true);
                 this->res_data.status = 301;
                 this->settings.redirected = true;
@@ -423,19 +423,15 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
             {
                 if (locations[i].redirectBlock)
                 {
-                    std::cout << "--- redirect block detected ---" << std::endl;
+                    //std::cout << "--- redirect block detected ---" << std::endl;
                     it = locations[i].redirections.begin();
-                    if (it->second == "/")
-                        std::cout << "to return : " << fileName << std::endl;
-                    else
-                        std::cout << "to return : " << it->second + fileName << std::endl;
                     this->settings.redirected = true;
                     if (it->second ==  "/")
                         return (fileName);
                     return (it->second + fileName);
                 }
-                std::cout << "to return : " << locations[i].getRoot() + fileName << std::endl;
-                std::cout << "third condition" << std::endl;
+                //std::cout << "to return : " << locations[i].getRoot() + fileName << std::endl;
+                //std::cout << "third condition" << std::endl;
                 setResponseSettings(locations[i], i, false);
                 return (locations[i].getRoot() + fileName);
             }
@@ -459,32 +455,6 @@ std::string Response::getPagePath2(std::string path, std::vector<Location>& loca
     //std::cout << "fourth condition" << std::endl;
     return ("");
 }
-/*
-void Response::notAllowedResponse(int cfd)
-{
-    std::string allowedMethods = "Allow: ";
-    if (this->setting.GET)
-        allowedMethods += "GET, ";
-    if (this->settings.POST)
-        allowedMethods += "POST ,";
-    if (this->settings.DELETE)
-        allowedMethods += "DELETE";
-    std::ostringstream msg;
-    msg << "HTTP/1.1 405 Method Not Allowed \r\n"
-        << "Date: " + getTime() + " \r\n"
-        << "Server: apache/2.4.41 (mac osx) \r\n"
-        <<  "Content-Length: 0 \r\n"
-        << allowedMethods + " \r\n"
-        << "\r\n";
-    std::string resp = msg.str();
-    if (send(cfd, resp.c_str(), resp.size(), MSG_NOSIGNAL) == -1)
-    {
-        std::cout << " failed to send " << cfd << std::endl;
-        this->state = ResponseDone;
-        throw (cfd);
-    }
-    this->state = ResponseDone;
-}*/
 
 void Response::notAllowedGetResponse(int cfd) // returns status ccoddee of 405
 {
@@ -565,38 +535,14 @@ void sendSimpleErrorPage(int cfd, int errorCode)
 // fix error page from static to dynamic from config file
 void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages, int errorCode)
 {
-    std::cout << "Error reponse page: " << cfd << std::endl;
+    //std::cout << "Error reponse page: " << cfd << std::endl;
     std::map<int, std::string>::iterator it;
     std::string path;
-    // it = errorPages.find(403);
-    // if (it != errorPages.end())
-    // {
-        // path = errorPages[403];
-        // if ((access(path.c_str(), F_OK) == -1) || (access(path.c_str(), R_OK) == -1))
-        //     path = "./pages/403.html";
-    // }
-    // else
-    // {
-        // switch (errorCode)
-        // {
-        //     case 403:
-        //         path = errorPages[403];
-        //         // if ((access(path.c_str(), F_OK) == -1) || (access(path.c_str(), R_OK) == -1))
-        //         //     path = "./pages/403.html";
-        //         break;
-        //     case 404:
-        //         path = errorPages[404];
-        //         break;
-        //     default:
-        //         std::cerr << "Unset error page: " << errorCode << " not handled yet!" << std::endl;
-        //         exit(1);
-        //         // exit ? should be removed
-        // }
-        std::cout << "\n\nerrorCode\n\n : \n" << errorCode << "\n";
+        //std::cout << "\n\nerrorCode\n\n : \n" << errorCode << "\n";
         path = errorPages[errorCode];
         if (access(path.c_str(), R_OK) == -1)
         {
-            std::cout << "missing default error page " << errorCode << std::endl;
+            //std::cout << "missing default error page " << errorCode << std::endl;
             this->state = ResponseDone;
             openfile = false;
             sendSimpleErrorPage(cfd, errorCode);
@@ -635,7 +581,7 @@ void Response::errorResponsePage(int cfd, std::map<int, std::string>& errorPages
 void Response::redirectResponse(int cfd, const char *path)
 {
     //  send a redirect 301 with
-    std::cout << "----------redirectResponse called--------" << std::endl;
+   // std::cout << "----------redirectResponse called--------" << std::endl;
     this->settings.redirected = false;
     std::ostringstream ofs;
     std::string location = "location: ";
@@ -923,7 +869,7 @@ void Response::successPostResponse(int cfd)
     std::string header = ofs.str();
     if (send(cfd, header.c_str(), header.length(), MSG_NOSIGNAL) == -1)
         throw (cfd);
-    std::cout << "sent post response" << header <<std::endl;
+    //std::cout << "sent post response" << header <<std::endl;
     this->state = ResponseDone;
 }
 
@@ -1238,10 +1184,10 @@ std::string humanSize(off_t size)
 // path  is ./pages/images
 std::map<std::string, std::string> Response::getDirectoryEntries(std::string& path)
 {
-    std::cout << "directory in which we are listing... " << path << std::endl;
+    //std::cout << "directory in which we are listing... " << path << std::endl;
     std::map<std::string, std::string> res;
     std::string fullpath;
-    std::cout << "directory to open is " << path << std::endl;
+    //std::cout << "directory to open is " << path << std::endl;
     DIR* dir = opendir(path.c_str());
     struct stat st;
     if (dir == 0)
@@ -1254,7 +1200,7 @@ std::map<std::string, std::string> Response::getDirectoryEntries(std::string& pa
     while ((entry = readdir(dir)) != 0)
     {
         fullpath = path + "/" + entry->d_name;
-        std::cout << "fullpath is " << fullpath << std::endl;
+        //std::cout << "fullpath is " << fullpath << std::endl;
         if (stat(fullpath.c_str(), &st) == 0 && S_ISREG(st.st_mode))
         {
             std::ostringstream line;
@@ -1327,4 +1273,24 @@ void Response::DirectoryListing(int cfd, std::string& dir, std::map<int, std::st
         throw(cfd);
     }
     this->state = ResponseDone;
+}
+
+void Response::reset()
+{
+    this->sentBytes = 0;
+    this->fileOffset = 0;
+    this->state = sendingheader;
+    this->openfile = false;
+    this->settings_set = false;
+    this->path_set = false;
+    this->settings.redirected = false;
+    this->settings.autoIndexed = false;
+    this->settings.dirUrl = false;
+    this->chunked = false;
+    this->settings.indexFile = false;  
+}
+
+void Response::setState(ResponseState st)
+{
+    state = st;
 }

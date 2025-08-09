@@ -63,24 +63,8 @@ class Response : public AResponse
         void successPostResponse(int);
         int check_is_file(const char *path);
         int getState(){return this->state;}
-        void setState(ResponseState st){
-            state = st;
-        }
-        void reset()
-        {
-            std::cout << "reseting Response..." << std::endl;
-            this->sentBytes = 0;
-            this->fileOffset = 0;
-            this->state = sendingheader;
-            this->openfile = false;
-            this->settings_set = false;
-            this->path_set = false;
-            this->settings.redirected = false;
-            this->settings.autoIndexed = false;
-            this->settings.dirUrl = false;
-            this->chunked = false;
-            this->settings.indexFile = false;
-        }
+        void setState(ResponseState st);
+        void reset();
         void deleteResponse(int, Request*);
         void sendNotFoundPage(const char* path, int cfd, bool redir);
         std::string getPagePath(const char *, std::vector<Location>);

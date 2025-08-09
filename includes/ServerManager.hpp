@@ -26,18 +26,7 @@ public:
     int findServerIndex(std::string host, std::string port, std::vector<Server> servers);
     void establishServers();
     void addToEpoll(int fd, int mode);
-    void modifyEpollEvent(int fd, int mode)
-    {
-        struct epoll_event ev;
-        ev.events = mode;
-        ev.data.fd = fd;
-        if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) == -1)
-        {
-            perror("epoll_ctl: listen_sock");
-            close(fd);
-            exit(EXIT_FAILURE);
-        }
-    }
+    void modifyEpollEvent(int fd, int mode);
     void run();
     int getTargetServer(int);
     void closeAllSockets();

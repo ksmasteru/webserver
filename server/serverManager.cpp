@@ -132,7 +132,7 @@ void ServerManager::run()
         {
             std::cout << "errno " << errno << std::endl;
             throw ("epoll_wait error\n");
-        }   
+        }
         for (int i = 0; i < num_events; i++)
         {
             if ((serverIndex = isServerSocket(epollEventsBuffer[i].data.fd)) != -1)
@@ -165,4 +165,17 @@ void ServerManager::run()
         // close all sockets
     }
     // also you should CLOSE ALL CLIENTS and open files.
+}
+
+void ServerManager::modifyEpollEvent(int fd, int mode)
+{
+    struct epoll_event ev;
+    ev.events = mode;
+    ev.data.fd = fd;
+    if (epoll_ctl(epoll_fd, EPOLL_CTL_MOD, fd, &ev) == -1)
+    {
+        perror("epoll_ctl: listen_sock");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
 }
