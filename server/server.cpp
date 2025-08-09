@@ -273,8 +273,7 @@ void Server::handleWriteEvent(int fd)
         clients[fd]->request._requestErrors.ContentTooLarge || clients[fd]->request._requestErrors.notAllowed)
     {
         std::cout << "bad request flag detected" << std::endl;
-        // exit here ? 405? handleBadRequest?
-        // exit(1);
+        exit(1);
         try {
             clients[fd]->response.handleBadRequest(fd, &clients[fd]->request);}
         catch (int n)
@@ -474,13 +473,13 @@ void Server::setPort(int port)
 
 void Server::setEpollfd(int _epollfd){ this->epollfd = _epollfd;}
 int  Server::getEpollfd(){return (this->epollfd);}
-// void Server::setServerName(const std::string &name) { _serverNames.push_back(name); }
+void Server::setServerName(const std::string &name) { _serverNames.push_back(name); }
 void Server::setClientMaxBodySize(size_t size) { _clientMaxBodySize = size; }
 void Server::addErrorPage(int code, const std::string &path) { _errorPages[code] = path; }
 void Server::addLocation(const Location &location) { _locations.push_back(location); }
 std::vector<std::string> Server::getHosts() { return _hosts; }
 std::vector<int> Server::getPorts() const { return _ports; }
-// std::vector<std::string> &Server::getServerNames() { return _serverNames; }
+std::vector<std::string> &Server::getServerNames() { return _serverNames; }
 size_t Server::getClientMaxBodySize() const { return _clientMaxBodySize; }
 const std::map<int, std::string> &Server::getErrorPages() const { return _errorPages; }
 const std::vector<Location> &Server::getLocations() const { return _locations; }
@@ -491,8 +490,8 @@ void Server::print() const
         std::cout << " Host: " << _hosts[i] << std::endl;
     for (size_t i = 0; i < _ports.size(); i++)
         std::cout << "  Port: " << _ports[i] << std::endl;
-    // for (size_t i = 0; i < _serverNames.size(); i++)
-        // std::cout << "  ServerName : " << _serverNames[i] << std::endl;
+    for (size_t i = 0; i < _serverNames.size(); i++)
+        std::cout << "  ServerName : " << _serverNames[i] << std::endl;
     std::cout << "  Max Body Size: " << _clientMaxBodySize << std::endl;
     if (!_errorPages.empty())
     {
