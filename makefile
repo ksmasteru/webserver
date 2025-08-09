@@ -1,6 +1,6 @@
 NAME = apache
 CC := c++
-CFLAGS := -Wall -Wextra -Werror -std=c++98 -fPIE -fsanitize=address
+CFLAGS := -Wall -Wextra -Werror -std=c++98
 LDFLAGS := -pie
 
 SRCS = utils/stringNumber.cpp server/Iconnect.cpp server/server.cpp request/request.cpp \
@@ -17,7 +17,7 @@ OBJS := $(SRCS:.cpp=.o)
 all: $(NAME)
 
 $(NAME): $(OBJS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJS) -o $(NAME)
+	$(CC) $(CFLAGS)  $(OBJS) -o $(NAME)
 
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< -o $@

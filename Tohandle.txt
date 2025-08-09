@@ -80,19 +80,3 @@ should requestFile struct be reset during a reset.
 
 !!!! MEMORY LEAKS WHEN TRYing to open /pages/images/feather.jpg%3C/a
 
-
-
-
-
-!! 23/07 when parsing return blocks no error is thrown wenn additional blocks are added.
-
-
-last update : tests for rediriction do work ; check if redirection response is sent properly
-
-to do : for flags cgiHandlerc++98 flags. addcookies c++98, request.cpp:fallthrough.
-
-
-get rid of AResponse _request;
-
-to handle : !! timeout in header should occur when some bytes has been read in case of a coonection reset
-it shouldnt immediately timeout.
