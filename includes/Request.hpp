@@ -66,6 +66,7 @@ enum Transfer_Type{
 
 typedef struct s_FILE{
     std::string fileName;
+    std::string uploadPath;
     int fd;
     unsigned long offset;
     Transfer_Type type;
@@ -130,8 +131,11 @@ class  Request{ // read event.
         RawRequest.clear();
         type.clear();
         qkey.clear();
+        headers.clear();
         qvalue.clear();
         RequestFile.fileName.clear();
+        RequestFile.uploadPath.clear();
+        RequestFile.offset = 0;
         MainState = ReadingRequestHeader;
         SubState = start;
         totalReadBytes = 0;
@@ -155,9 +159,13 @@ class  Request{ // read event.
     ~Request(){}
     bool    isValidPostPath(std::vector<Location> _locations);
     std::string getfullpath();
-    const std::map<std::string, std::string>& getHeaders() const;
+    std::map<std::string, std::string>& getHeaders();
 
     // cookies
     std::map<std::string, std::string> cookiesMap;
     void parseCookies(const std::string& cookieHeader);
+    // 
+    bool isvalidUploadPath(std::vector<Location> &locations);
+    bool isDirectoryWritable(const char* dirPath);
+    std::string generateUniqueFilename();
 };

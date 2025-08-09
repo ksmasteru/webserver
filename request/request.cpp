@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <cstring>
+#include <sys/stat.h>
 #include "../includes/webserver.hpp"
 
 bool isGetRequest(char *str)
@@ -535,6 +536,73 @@ bool Request::isValidPostPath(std::vector<Location> _locations)
     return (false);
 }
 
+bool Request::isDirectoryWritable(const char* dirPath) {
+    struct stat info;
+
+    // Check if directory exists
+    if (stat(dirPath, &info) != 0) {
+        return false;
+    }
+
+    // Check if it is a directory
+    if (!(info.st_mode & S_IFDIR)) {
+        return false;
+    }
+
+    // Construct a test file path inside the directory
+    char testFilePath[1024];
+    std::snprintf(testFilePath, sizeof(testFilePath), "%s/temp_write_test.txt", dirPath);
+
+    // Try to open the file for writing
+    FILE* file = std::fopen(testFilePath, "w");
+    if (!file) {
+        return false;
+    }
+
+    // Write something to the file
+    const char* testData = "test";
+    size_t written = std::fwrite(testData, sizeof(char), std::strlen(testData), file);
+    std::fclose(file);
+
+    if (written != std::strlen(testData)) {
+        return false;
+    }
+
+    // Remove the test file
+    if (std::remove(testFilePath) != 0) {
+        return false;
+    }
+
+    return true;
+}
+
+bool Request::isvalidUploadPath(std::vector<Location> &_locations)
+{
+    std::string req_path = getRequestPath();
+    std::cout << "post request path is " << req_path << std::endl;
+    for (size_t i = 0; i < _locations.size(); i++)
+    {
+        if (req_path == _locations[i].getPath())
+        {
+            this->RequestFile.uploadPath = _locations[i].getUploadPath();
+            std::cout << "req_path is : " << req_path << std::endl;
+            std::vector<std::string> allowed = _locations[i].getAllowedMethods();
+            for (size_t i = 0; i < allowed.size(); i++)
+            {
+                if (allowed[i] == "POST")
+                {
+                    std::cout << "_locations[i].getUploadPath() : " << this->RequestFile.uploadPath << "\n";
+                    if (!isDirectoryWritable(this->RequestFile.uploadPath.c_str()))
+                        return (false);
+                    std::cout << "POST IS ALLOWED" << std::endl;
+                    return(true);
+                }
+            }
+        }
+    }
+    std::cout <<  "POST IS NOT ALLOWED FOR ---" << req_path << "---" << std::endl;
+    return (false);
+} 
 /* this handles the post request Body : uploads the file to server.*/
 void Request::parseRequestBody(char *request, int offset, int readBytes, std::vector<Location> locations)
 {
@@ -551,6 +619,11 @@ void Request::parseRequestBody(char *request, int offset, int readBytes, std::ve
     // only allow uploads to
     if (!isValidPostPath(locations))
         throw (405);
+    if (!isvalidUploadPath(locations))
+    {
+        // exit (500);
+        throw (500);
+    }
     if (!openRequestFile)
         setUpPostFile();
     // here to check for max body size.
@@ -765,7 +838,40 @@ std::string Request::getfullpath()
     return this->fullpath;
 }
 
-const std::map<std::string, std::string>&  Request::getHeaders() const
+std::map<std::string, std::string>&  Request::getHeaders()
 {
     return this->headers;
 }
+std::string Request::generateUniqueFilename() {
+    // Get current timestamp
+    time_t rawtime;
+    struct tm* timeinfo;
+    char buffer[80];
+    
+    time(&rawtime);
+    timeinfo = localtime(&rawtime);
+    
+    // Format timestamp: YYYYMMDD_HHMMSS
+    strftime(buffer, 80, "%Y%m%d_%H%M%S", timeinfo);
+    std::string timestamp(buffer);
+    
+    // Generate random string (6 characters)
+    const std::string chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    std::string randomStr;
+    
+    // Initialize random seed
+    srand(static_cast<unsigned int>(time(NULL) ^ clock()));
+    for (int i = 0; i < 6; ++i) {
+        int index = rand() % chars.size();
+        randomStr += chars[index];
+    }
+    
+    // Build filename: upload_YYYYMMDD_HHMMSS_[random]
+    std::string upload_dir = this->RequestFile.uploadPath;
+    if (upload_dir[upload_dir.size() - 1] != '/')
+        upload_dir += "/";
+    std::string filename = upload_dir + "upload_" + timestamp + "_" + randomStr;
+    // Add appropriate extension based on Content-Type if provided
+    return filename;
+}
+

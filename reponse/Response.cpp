@@ -124,7 +124,7 @@ std::string Response::RspHeader(long long cLength, unsigned int code)
             << "Transfer-Encoding: chunked \r\n"
             << "Connection: " + alive + " \r\n";
     }
-    //addCookiesHeader(header);
+    addCookiesHeader(header);
     header << "\r\n";
     std::string head_msg = header.str();
     this->res_data.totallength = cLength + head_msg.length();
@@ -710,7 +710,7 @@ void Response::handleCgiRequest(const std::string &scriptPath, int cfd, Request 
                 << "Content-Length: "
                 << longlongToString(body.length()) + "\r\n"
                                                 << "Connection: close\r\n";
-                //addCookiesHeader(header);
+                addCookiesHeader(header);
             header << "\r\n";
             std::string response = header.str() + body;
             // Send the response to the client
@@ -914,7 +914,7 @@ void Response::successPostResponse(int cfd)
 {
     std::ostringstream ofs;
     ofs << "HTTP/1.1 201 Created \r\n";
-    //addCookiesHeader(ofs);
+    addCookiesHeader(ofs);
     ofs << "Connection: Close \r\n"
         << "Content-length: 0 \r\n"
         << "\r\n";
@@ -1156,7 +1156,7 @@ std::string Response::buildCgiResponse()
     } else {
         response_stream << "Connection: close\r\n";
     }
-    //addCookiesHeader(response_stream);
+    addCookiesHeader(response_stream);
     response_stream << "\r\n"; 
     response_stream << cgi_body;
     return response_stream.str();
